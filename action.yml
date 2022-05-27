@@ -1,0 +1,47 @@
+name: PHP Version Check
+
+on:
+  workflow_call:
+    inputs:
+      expected_php:
+        required: true
+        type: string
+      php_version_check: 
+        type: string
+jobs:
+  php_version_check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 7.4
+
+    - name: Validate composer.json and composer.lock
+      run: composer validate --strict
+
+    - name: Cache Composer packages
+      id: composer-cache
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-php-
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress
+
+    - name: Check PHP ${{ input.expected_php }} version support
+      run: |
+        PLAINPHPVERSION=$(cat vendor/composer/platform_check.php | grep -o 'PHP_VERSION_ID >= [0-9]\+' | grep -o '[0-9]\+')
+        DOTTEDPHPVERSION=$(cat vendor/composer/platform_check.php | grep -o '>=\s[0-9]\+\.[0-9]\+\.\?[0-9]*' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
+
+        if (( $PLAINPHPVERSION >= ${{ input.php_version_check }} )); then
+            echo "::error file=vendor/composer/platform_check.php::Composer dependencies do not support PHP ${{ input.expected_php }}, they require PHP ${DOTTEDPHPVERSION} or higher."
+            exit 1
+        fi
+        
