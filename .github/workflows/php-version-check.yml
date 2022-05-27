@@ -35,7 +35,7 @@ jobs:
     - name: Install dependencies
       run: composer install --prefer-dist --no-progress
 
-    - name: Check PHP ${input.expected_php} version support
+    - name: Check PHP ${{input.expected_php}} version support
       run: |
         PLAINPHPVERSION=$(cat vendor/composer/platform_check.php | grep -o 'PHP_VERSION_ID >= [0-9]\+' | grep -o '[0-9]\+')
         DOTTEDPHPVERSION=$(cat vendor/composer/platform_check.php | grep -o '>=\s[0-9]\+\.[0-9]\+\.\?[0-9]*' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
