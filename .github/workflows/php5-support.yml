@@ -1,13 +1,8 @@
-name: PHP Version Check
+name: PHP5 Suport
 
 on:
   workflow_call:
-    inputs:
-      expected_php:
-        required: true
-        type: string
-      php_version_check: 
-        type: string
+  
 jobs:
   php_version_check:
     runs-on: ubuntu-latest
@@ -36,15 +31,12 @@ jobs:
       run: composer install --prefer-dist --no-progress
 
     - name: Check PHP version support
-      env:
-        EXPECTED_PHP_VERSION: ${{ inputs.expected_php }}
-        PHP_VERSION_TO_CHECK: ${{ php_version_check }}
       run: |
         PLAINPHPVERSION=$(cat vendor/composer/platform_check.php | grep -o 'PHP_VERSION_ID >= [0-9]\+' | grep -o '[0-9]\+')
         DOTTEDPHPVERSION=$(cat vendor/composer/platform_check.php | grep -o '>=\s[0-9]\+\.[0-9]\+\.\?[0-9]*' | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+')
 
-        if (( $PLAINPHPVERSION >= $EXPECTED_PHP_VERSION )); then
-            echo "::error file=vendor/composer/platform_check.php::Composer dependencies do not support PHP ${PHP_VERSION_TO_CHECK}, they require PHP ${DOTTEDPHPVERSION} or higher."
+        if (( $PLAINPHPVERSION >= 70000 )); then
+            echo "::error file=vendor/composer/platform_check.php::Composer dependencies do not support PHP 5.6, they require PHP ${DOTTEDPHPVERSION} or higher."
             exit 1
         fi
         
