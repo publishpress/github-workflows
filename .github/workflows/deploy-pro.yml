@@ -1,4 +1,4 @@
-name: Deploy Pro plugin to PublishPress.com
+name: Deploy Pro Plugin to PublishPress.com
 permissions:
   contents: read
 on:
@@ -9,18 +9,25 @@ env:
 
 jobs:
   deploy-pro:
-    name: Deploy the new tag
-    runs-on: [self-hosted, release]
+    name: Deploy tagged release to PublishPress.com
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         # actions/checkout@v6.0.2
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-      - name: Create root .env from template
+      - name: Set up PHP
+        # shivammathur/setup-php@2.37.0
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f
+        with:
+          php-version: 8.3
+          extensions: mbstring,xml,curl,zip,intl,bcmath,gettext,mysqli,phar,gd,iconv,yaml
+
+      - name: Create root .env file
         run: |
           cp $GITHUB_WORKSPACE/.env.example $GITHUB_WORKSPACE/.env
 
-      - name: Validate composer.json
+      - name: Validate Composer configuration
         run: composer validate
 
       - name: Install Composer dependencies
@@ -32,10 +39,10 @@ jobs:
       - name: Add dev-workspace scripts to PATH
         run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
 
-      - name: Build the plugin package
+      - name: Build plugin package
         run: composer build
 
-      - name: Get the plugin version and metadata
+      - name: Read plugin metadata and version
         id: get-metadata
         run: |
           PLUGIN_SLUG=$(jq -r '.extra["plugin-slug"]' composer.json)
@@ -47,7 +54,7 @@ jobs:
           echo "plugin_name=${PLUGIN_NAME}" >> "$GITHUB_OUTPUT"
           echo "plugin_version=${PLUGIN_VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload release asset
+      - name: Upload GitHub release asset
         # softprops/action-gh-release@v3.0.0
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
         with:
