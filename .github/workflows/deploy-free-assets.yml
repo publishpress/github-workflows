@@ -41,7 +41,7 @@ jobs:
 
       - name: Read plugin metadata and version
         id: get-metadata
-        run: plugin-metadata-github-output.sh
+        run: composer deploy:metadata-github-output
 
 
       - name: Update WordPress.org plugin assets and readme
@@ -50,5 +50,5 @@ jobs:
         env:
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-          SLUG: ${{ steps.get-metadata.outputs.plugin_slug }}
+          SLUG: ${{ steps.get-metadata.outputs.plugin-slug }}
           IGNORE_OTHER_FILES: true

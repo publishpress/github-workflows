@@ -44,18 +44,10 @@ jobs:
 
       - name: Read plugin metadata and version
         id: get-metadata
-        run: |
-          PLUGIN_SLUG=$(jq -r '.extra["plugin-slug"]' composer.json)
-          PLUGIN_FOLDER=$(jq -r '.extra["plugin-folder"]' composer.json)
-          PLUGIN_NAME=$(jq -r '.extra["plugin-name"]' composer.json)
-          PLUGIN_VERSION=$(plugin-version.sh)
-          echo "plugin_slug=${PLUGIN_SLUG}" >> "$GITHUB_OUTPUT"
-          echo "plugin_folder=${PLUGIN_FOLDER}" >> "$GITHUB_OUTPUT"
-          echo "plugin_name=${PLUGIN_NAME}" >> "$GITHUB_OUTPUT"
-          echo "plugin_version=${PLUGIN_VERSION}" >> "$GITHUB_OUTPUT"
+        run: composer deploy:metadata-github-output
 
       - name: Upload GitHub release asset
         # softprops/action-gh-release@v3.0.0
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
         with:
-          files: ${{ github.workspace }}/dist/${{ steps.get-metadata.outputs.plugin_name }}-${{ steps.get-metadata.outputs.plugin_version }}.zip
+          files: ${{ github.workspace }}/dist/${{ steps.get-metadata.outputs.plugin-name }}-${{ steps.get-metadata.outputs.plugin-version }}.zip
