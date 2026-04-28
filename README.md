@@ -23,9 +23,9 @@ name: Unit Tests
 
 on:
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master, development ]
   push:
-    branches: [ master, develop ]
+    branches: [ master, development ]
 
 permissions:
   contents: read
@@ -42,9 +42,9 @@ name: Code Checks
 
 on:
   pull_request:
-    branches: [ master, develop ]
+    branches: [ master, development ]
   push:
-    branches: [ master, develop ]
+    branches: [ master, development ]
 
 permissions:
   contents: read
