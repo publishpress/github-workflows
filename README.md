@@ -1,25 +1,115 @@
 # github-workflows
-Workflow for checking PHP min version
 
+Reusable GitHub Actions workflows for PublishPress plugin repositories.
 
-## Using this workflow:
+## Available workflows
 
-Create a php5-support.yml file in the `.github/workflows` dir on the repository:
+- `.github/workflows/unit-tests.yml`: Runs PHPUnit tests.
+- `.github/workflows/code-check.yml`: Runs PHP compatibility and lint checks.
+- `.github/workflows/deploy-free.yml`: Builds and deploys free plugin releases to WordPress.org and uploads release assets to GitHub.
+- `.github/workflows/deploy-free-assets.yml`: Updates WordPress.org plugin assets/readme.
+- `.github/workflows/deploy-pro.yml`: Builds pro plugin packages and uploads release assets to GitHub.
 
-```YAML
-name: PHP v5 Support
+## Usage
+
+Create a workflow file in your repository under `.github/workflows/` and call one of these reusable workflows.
+
+Security recommendation: always pin reusable workflows to a commit SHA, not a branch name such as `main`.
+
+### Unit tests example
+
+```yaml
+name: Unit Tests
 
 on:
-  push:
-    branches: [ master, develop ]
   pull_request:
+    branches: [ master, develop ]
+  push:
     branches: [ master, develop ]
 
 permissions:
   contents: read
 
 jobs:
-  php5_check:
-    uses: publishpress/github-workflows/.github/workflows/php5-support.yml@main
+  unit_tests:
+    uses: publishpress/github-workflows/.github/workflows/unit-tests.yml@<commit-sha>
+```
 
+### Code checks example
+
+```yaml
+name: Code Checks
+
+on:
+  pull_request:
+    branches: [ master, develop ]
+  push:
+    branches: [ master, develop ]
+
+permissions:
+  contents: read
+
+jobs:
+  code_check:
+    uses: publishpress/github-workflows/.github/workflows/code-check.yml@<commit-sha>
+```
+
+### Deploy free plugin example
+
+```yaml
+name: Deploy Free Plugin
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  deploy_free:
+    uses: publishpress/github-workflows/.github/workflows/deploy-free.yml@<commit-sha>
+    secrets: inherit
+```
+
+Required repository secrets for WordPress.org deploy:
+
+- `SVN_USERNAME`
+- `SVN_PASSWORD`
+
+### Deploy pro plugin example
+
+```yaml
+name: Deploy Pro Plugin
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  deploy_pro:
+    uses: publishpress/github-workflows/.github/workflows/deploy-pro.yml@<commit-sha>
+    secrets: inherit
+```
+
+### Deploy free plugin assets example
+
+```yaml
+name: Deploy Free Plugin Assets
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy_assets:
+    uses: publishpress/github-workflows/.github/workflows/deploy-free-assets.yml@<commit-sha>
+    secrets: inherit
 ```
