@@ -41,15 +41,8 @@ jobs:
 
       - name: Read plugin metadata and version
         id: get-metadata
-        run: |
-          PLUGIN_SLUG=$(jq -r '.extra["plugin-slug"]' composer.json)
-          PLUGIN_FOLDER=$(jq -r '.extra["plugin-folder"]' composer.json)
-          PLUGIN_NAME=$(jq -r '.extra["plugin-name"]' composer.json)
-          PLUGIN_VERSION=$(plugin-version.sh)
-          echo "plugin_slug=${PLUGIN_SLUG}" >> "$GITHUB_OUTPUT"
-          echo "plugin_folder=${PLUGIN_FOLDER}" >> "$GITHUB_OUTPUT"
-          echo "plugin_name=${PLUGIN_NAME}" >> "$GITHUB_OUTPUT"
-          echo "plugin_version=${PLUGIN_VERSION}" >> "$GITHUB_OUTPUT"
+        run: plugin-metadata-github-output.sh
+
 
       - name: Update WordPress.org plugin assets and readme
         # 10up/action-wordpress-plugin-asset-update@v2.2.0
