@@ -1,6 +1,6 @@
 name: Deploy Free Plugin to WordPress.org
 permissions:
-  contents: read
+  contents: write
 on:
   workflow_call:
 

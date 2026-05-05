@@ -1,6 +1,6 @@
 name: Deploy Pro Plugin to PublishPress.com
 permissions:
-  contents: read
+  contents: write
 on:
   workflow_call:
 
