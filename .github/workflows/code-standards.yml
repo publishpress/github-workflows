@@ -1,4 +1,4 @@
-name: Code Checks (PHP Compatibility, Lint, VIP)
+name: Enforce Code Standards and Compatibility
 permissions:
   contents: read
 on:
@@ -11,6 +11,7 @@ jobs:
   check:
     name: Run code checks
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         # actions/checkout@v6.0.2
@@ -22,16 +23,16 @@ jobs:
         with:
           php-version: 8.3
           extensions: mbstring,xml,curl,zip,intl,bcmath,gettext,mysqli,phar,gd,iconv,yaml
+          tools: composer:v2
 
       - name: Create root .env file
-        run: |
-          cp $GITHUB_WORKSPACE/.env.example $GITHUB_WORKSPACE/.env
+        run: cp $GITHUB_WORKSPACE/.env.example $GITHUB_WORKSPACE/.env
 
       - name: Validate Composer configuration
-        run: composer validate
+        run: composer validate --strict
 
       - name: Install Composer dependencies
-        run: composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Show dev-workspace tool versions
         run: composer info:version
@@ -40,13 +41,10 @@ jobs:
         run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
 
       - name: Run PHP compatibility check
-        run: |
-          composer check:php
+        run: composer check:php
 
       - name: Run PHP lint
-        run: |
-          composer lint:php
+        run: composer lint:php
 
       - name: Run PHPCS lint
-        run: |
-          composer lint:phpcs
+        run: composer lint:phpcs

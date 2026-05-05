@@ -1,4 +1,4 @@
-name: Deploy Free Plugin Assets to WordPress.org
+name: Deploy Plugin Assets (WordPress.org)
 permissions:
   contents: read
 on:
@@ -16,6 +16,7 @@ jobs:
   deploy-assets:
     name: Deploy plugin assets to WordPress.org
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout repository
         # actions/checkout@v6.0.2
@@ -27,10 +28,10 @@ jobs:
         with:
           php-version: 8.3
           extensions: mbstring,xml,curl,zip,intl,bcmath,gettext,mysqli,phar,gd,iconv,yaml
+          tools: composer:v2
 
       - name: Create root .env file
-        run: |
-          cp $GITHUB_WORKSPACE/.env.example $GITHUB_WORKSPACE/.env
+        run: cp $GITHUB_WORKSPACE/.env.example $GITHUB_WORKSPACE/.env
 
       - name: Validate Composer configuration
         run: composer validate
@@ -47,7 +48,6 @@ jobs:
       - name: Read plugin metadata and version
         id: get-metadata
         run: composer deploy:metadata-github-output
-
 
       - name: Update WordPress.org plugin assets and readme
         # 10up/action-wordpress-plugin-asset-update@v2.2.0

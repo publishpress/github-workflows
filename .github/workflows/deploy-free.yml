@@ -1,4 +1,4 @@
-name: Deploy Free Plugin to WordPress.org
+name: Deploy Free Release to WordPress.org
 permissions:
   contents: write
 on:
@@ -16,6 +16,7 @@ jobs:
   deploy-wp-org:
     name: Deploy tagged release to WordPress.org
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         # actions/checkout@v6.0.2
@@ -27,10 +28,10 @@ jobs:
         with:
           php-version: 8.3
           extensions: mbstring,xml,curl,zip,intl,bcmath,gettext,mysqli,phar,gd,iconv,yaml
+          tools: composer:v2
 
       - name: Create root .env file
-        run: |
-          cp $GITHUB_WORKSPACE/.env.example $GITHUB_WORKSPACE/.env
+        run: cp $GITHUB_WORKSPACE/.env.example $GITHUB_WORKSPACE/.env
 
       - name: Validate Composer configuration
         run: composer validate
