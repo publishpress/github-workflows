@@ -14,7 +14,7 @@ env:
 
 jobs:
   deploy-wp-org:
-    name: Deploy tagged release to WordPress.org
+    name: Deploy the tagged release to WordPress.org
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
