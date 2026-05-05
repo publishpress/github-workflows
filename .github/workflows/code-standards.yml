@@ -1,4 +1,4 @@
-name: Enforce Code Standards and Compatibility
+name: Enforce code Standards and Compatibility
 permissions:
   contents: read
 on:

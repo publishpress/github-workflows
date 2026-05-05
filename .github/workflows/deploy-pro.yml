@@ -1,4 +1,4 @@
-name: Deploy Pro Plugin to PublishPress.com
+name: Deploy pro plugin to PublishPress.com
 permissions:
   contents: write
 on:

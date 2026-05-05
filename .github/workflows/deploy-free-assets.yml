@@ -1,4 +1,4 @@
-name: Deploy Plugin Assets (WordPress.org)
+name: Deploy plugin assets to WordPress.org
 permissions:
   contents: read
 on:
