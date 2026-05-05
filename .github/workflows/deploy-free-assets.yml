@@ -3,6 +3,11 @@ permissions:
   contents: read
 on:
   workflow_call:
+    secrets:
+      SVN_USERNAME:
+        required: true
+      SVN_PASSWORD:
+        required: true
 
 env:
   DEV_SCRIPTS_DIR: ${{ github.workspace }}/vendor/publishpress/dev-workspace/scripts
