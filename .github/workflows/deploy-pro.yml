@@ -29,10 +29,10 @@ jobs:
         run: cp $GITHUB_WORKSPACE/.env.example $GITHUB_WORKSPACE/.env
 
       - name: Validate Composer configuration
-        run: composer validate
+        run: composer validate --strict
 
       - name: Install Composer dependencies
-        run: composer install
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Show dev-workspace tool versions
         run: composer info:version
