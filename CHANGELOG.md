@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.1.0] - 05 May, 2026
+
+- Added: Introduced a dedicated integration tests workflow.
+
 [3.0.1] - 05 May, 2026
 
 - Changed: Enabled strict Composer validation for improved reliability on all the workflows.
