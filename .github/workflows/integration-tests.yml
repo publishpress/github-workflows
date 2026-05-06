@@ -40,6 +40,10 @@ jobs:
       - name: Add dev-workspace scripts to PATH
         run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
 
+      - name: Read plugin metadata and version
+        id: get-metadata
+        run: composer deploy:metadata-github-output
+
       - name: Start services
         run: composer test:up
         timeout-minutes: 6
@@ -47,18 +51,24 @@ jobs:
           WP_READY_MAX_ATTEMPTS: 60
           WP_READY_INTERVAL: 5
 
+      - name: Build the plugin and copy it to the test container
+        run: |
+          composer build:dir
+          cp -r $GITHUB_WORKSPACE/dist/${{ steps.get-metadata.outputs.plugin-folder }} $GITHUB_WORKSPACE/dev-workspace-cache/wp_test/wp-content/plugins/${{ steps.get-metadata.outputs.plugin-folder }}
+
+      - name: Build codeception support classes
+        run: composer codecept build
+
       - name: Verify container status and fix permissions
         run: |
           docker ps
           echo "Checking marker file..."
-          ls -la $GITHUB_WORKSPACE/dev-workspace-cache/wp_test/wp-content/plugins/publishpress-hub || true
+          ls -la $GITHUB_WORKSPACE/dev-workspace-cache/wp_test/wp-content/plugins/${{ steps.get-metadata.outputs.plugin-folder }} || true
           sleep 15
           echo "Fixing permissions for test runner..."
           sudo chown -R $(id -u):$(id -g) $GITHUB_WORKSPACE/dev-workspace-cache
           sudo chmod -R 777 $GITHUB_WORKSPACE/dev-workspace-cache
 
-      - name: Build Codeception support classes
-        run: composer build
 
       - name: Run integration tests
         run: composer test Integration

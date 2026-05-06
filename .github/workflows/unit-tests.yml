@@ -40,6 +40,9 @@ jobs:
       - name: Add dev-workspace scripts to PATH
         run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
 
+      - name: Build codeception support classes
+        run: composer codecept build
+
       - name: Run unit tests
         run: |
           composer test Unit
