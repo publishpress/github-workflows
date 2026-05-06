@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.1.2] - 05 May, 2026
+
+- Fixed: Resolved issue where the build:dir command was not found.
+
 [3.1.1] - 05 May, 2026
 
 - Fixed: Updated integration tests workflow to dynamically use plugin metadata instead of hardcoded values.
