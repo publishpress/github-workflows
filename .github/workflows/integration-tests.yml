@@ -51,11 +51,6 @@ jobs:
           WP_READY_MAX_ATTEMPTS: 60
           WP_READY_INTERVAL: 5
 
-      - name: Pack the plugin and copy it to the test container
-        run: |
-          composer pack:dir
-          cp -r $GITHUB_WORKSPACE/dist/${{ steps.get-metadata.outputs.plugin-folder }} $GITHUB_WORKSPACE/dev-workspace-cache/wp_test/wp-content/plugins/${{ steps.get-metadata.outputs.plugin-folder }}
-
       - name: Build codeception support classes
         run: composer codecept build
 
