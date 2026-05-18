@@ -41,4 +41,59 @@ jobs:
         run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
 
       - name: Run code complexity analysis
-        run: composer metrics -- .
+        run: |
+          set -o pipefail
+          composer metrics -- --report-violations=metrics/violations.xml . | tee metrics-output.log
+
+      - name: Enforce complexity gate and show actionable violations
+        run: |
+          critical=$(grep -E "^[[:space:]]*Critical[[:space:]]+[0-9]+" metrics-output.log | awk '{print $2}' | tail -n 1)
+          errors=$(grep -E "^[[:space:]]*Error[[:space:]]+[0-9]+" metrics-output.log | awk '{print $2}' | tail -n 1)
+
+          critical=${critical:-0}
+          errors=${errors:-0}
+
+          echo "PHPMetrics summary: Critical=${critical}, Error=${errors}"
+
+          if [ -f metrics/violations.xml ]; then
+            php -r '
+              $file = "metrics/violations.xml";
+              $doc = new DOMDocument();
+              if (!$doc->load($file)) {
+                fwrite(STDERR, "Failed to parse violations file\n");
+                exit(0);
+              }
+
+              $files = $doc->getElementsByTagName("file");
+              foreach ($files as $f) {
+                $path = $f->getAttribute("name");
+                foreach ($f->getElementsByTagName("violation") as $v) {
+                  $priority = (int) $v->getAttribute("priority");
+                  $line = (int) $v->getAttribute("beginline");
+                  if ($line <= 0) {
+                    $line = (int) $v->getAttribute("line");
+                  }
+
+                  $message = trim(preg_replace("/\s+/", " ", $v->textContent));
+                  $severity = "notice";
+                  if ($priority > 0 && $priority <= 2) {
+                    $severity = "error";
+                  } elseif ($priority === 3) {
+                    $severity = "warning";
+                  }
+
+                  $label = $priority > 0 ? "P" . $priority : "P?";
+                  if ($line > 0) {
+                    echo "::${severity} file=${path},line=${line}::[${label}] ${message}\n";
+                  } else {
+                    echo "::${severity} file=${path}::[${label}] ${message}\n";
+                  }
+                }
+              }
+            '
+          fi
+
+          if [ "$critical" -gt 0 ] || [ "$errors" -gt 0 ]; then
+            echo "Failing workflow due to PHPMetrics violations (Critical=${critical}, Error=${errors})."
+            exit 1
+          fi
