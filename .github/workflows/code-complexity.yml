@@ -49,11 +49,19 @@ jobs:
         run: |
           critical=$(grep -E "^[[:space:]]*Critical[[:space:]]+[0-9]+" metrics-output.log | awk '{print $2}' | tail -n 1)
           errors=$(grep -E "^[[:space:]]*Error[[:space:]]+[0-9]+" metrics-output.log | awk '{print $2}' | tail -n 1)
+          warnings=$(grep -E "^[[:space:]]*Warning[[:space:]]+[0-9]+" metrics-output.log | awk '{print $2}' | tail -n 1)
+          information=$(grep -E "^[[:space:]]*Information[[:space:]]+[0-9]+" metrics-output.log | awk '{print $2}' | tail -n 1)
 
           critical=${critical:-0}
           errors=${errors:-0}
+          warnings=${warnings:-0}
+          information=${information:-0}
 
-          echo "PHPMetrics summary: Critical=${critical}, Error=${errors}"
+          echo "Violations"
+          printf "    %-43s %s\n" "Critical" "${critical}"
+          printf "    %-43s %s\n" "Error" "${errors}"
+          printf "    %-43s %s\n" "Warning" "${warnings}"
+          printf "    %-43s %s\n" "Information" "${information}"
 
           if [ -f metrics/violations.xml ]; then
             php -r '
@@ -66,27 +74,40 @@ jobs:
 
               $files = $doc->getElementsByTagName("file");
               foreach ($files as $f) {
-                $path = $f->getAttribute("name");
                 foreach ($f->getElementsByTagName("violation") as $v) {
                   $priority = (int) $v->getAttribute("priority");
+                  if ($priority > 2) {
+                    continue;
+                  }
+
+                  $path = $f->getAttribute("name");
+                  if ("" === $path) {
+                    $path = $v->getAttribute("file");
+                  }
+
+                  $entity = $v->getAttribute("class");
+                  if ("" === $entity) {
+                    $entity = $v->getAttribute("package");
+                  }
+
                   $line = (int) $v->getAttribute("beginline");
                   if ($line <= 0) {
                     $line = (int) $v->getAttribute("line");
                   }
 
                   $message = trim(preg_replace("/\s+/", " ", $v->textContent));
-                  $severity = "notice";
-                  if ($priority > 0 && $priority <= 2) {
-                    $severity = "error";
-                  } elseif ($priority === 3) {
-                    $severity = "warning";
+                  $label = $priority > 0 ? "P" . $priority : "P?";
+                  $entityLabel = "";
+                  if ("" !== $entity) {
+                    $entityLabel = " [" . $entity . "]";
                   }
 
-                  $label = $priority > 0 ? "P" . $priority : "P?";
-                  if ($line > 0) {
-                    echo "::${severity} file=${path},line=${line}::[${label}] ${message}\n";
+                  if ("" !== $path && $line > 0) {
+                    echo "::error file=${path},line=${line}::[${label}]${entityLabel} ${message}\n";
+                  } elseif ("" !== $path) {
+                    echo "::error file=${path}::[${label}]${entityLabel} ${message}\n";
                   } else {
-                    echo "::${severity} file=${path}::[${label}] ${message}\n";
+                    echo "::error::[${label}]${entityLabel} ${message}\n";
                   }
                 }
               }
