@@ -35,10 +35,10 @@ jobs:
     uses: publishpress/github-workflows/.github/workflows/unit-tests.yml@<commit-sha>
 ```
 
-### Code checks example
+### Code standards example
 
 ```yaml
-name: Code Checks
+name: Code Standards
 
 on:
   pull_request:
@@ -50,8 +50,8 @@ permissions:
   contents: read
 
 jobs:
-  code_check:
-    uses: publishpress/github-workflows/.github/workflows/code-check.yml@<commit-sha>
+  code_standards:
+    uses: publishpress/github-workflows/.github/workflows/code-standards.yml@<commit-sha>
 ```
 
 ### Deploy free plugin example
