@@ -97,17 +97,23 @@ jobs:
 
                   $message = trim(preg_replace("/\s+/", " ", $v->textContent));
                   $label = $priority > 0 ? "P" . $priority : "P?";
-                  $entityLabel = "";
-                  if ("" !== $entity) {
-                    $entityLabel = " [" . $entity . "]";
+                  $context = "";
+                  if ("" !== $path && $line > 0) {
+                    $context = $path . ":" . $line;
+                  } elseif ("" !== $path) {
+                    $context = $path;
+                  } elseif ("" !== $entity) {
+                    $context = $entity;
                   }
 
                   if ("" !== $path && $line > 0) {
-                    echo "::error file=${path},line=${line}::[${label}]${entityLabel} ${message}\n";
+                    echo "::error file=${path},line=${line}::[${label}] [${context}] ${message}\n";
                   } elseif ("" !== $path) {
-                    echo "::error file=${path}::[${label}]${entityLabel} ${message}\n";
+                    echo "::error file=${path}::[${label}] [${context}] ${message}\n";
+                  } elseif ("" !== $context) {
+                    echo "::error::[${label}] [${context}] ${message}\n";
                   } else {
-                    echo "::error::[${label}]${entityLabel} ${message}\n";
+                    echo "::error::[${label}] [no-source-reference] ${message}\n";
                   }
                 }
               }
