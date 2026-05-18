@@ -6,7 +6,7 @@ Reusable GitHub Actions workflows for PublishPress plugin repositories.
 
 - `.github/workflows/unit-tests.yml`: Runs PHPUnit tests.
 - `.github/workflows/code-standards.yml`: Runs PHP compatibility and lint checks.
-- `.github/workflows/code-complexity.yml`: Runs PHP code complexity analysis with PHPMetrics.
+- `.github/workflows/code-complexity.yml`: Runs PHP code complexity analysis with PHPMD.
 - `.github/workflows/deploy-free.yml`: Builds and deploys free plugin releases to WordPress.org and uploads release assets to GitHub.
 - `.github/workflows/deploy-free-assets.yml`: Updates WordPress.org plugin assets/readme.
 - `.github/workflows/deploy-pro.yml`: Builds pro plugin packages and uploads release assets to GitHub.
