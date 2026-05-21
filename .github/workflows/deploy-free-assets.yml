@@ -3,6 +3,11 @@ permissions:
   contents: read
 on:
   workflow_call:
+    inputs:
+      PLUGIN_SLUG:
+        description: WordPress.org plugin slug
+        required: true
+        type: string
     secrets:
       SVN_USERNAME:
         required: true
@@ -30,30 +35,11 @@ jobs:
           extensions: mbstring,xml,curl,zip,intl,bcmath,gettext,mysqli,phar,gd,iconv,yaml
           tools: composer:v2
 
-      - name: Create root .env file
-        run: cp $GITHUB_WORKSPACE/.env.example $GITHUB_WORKSPACE/.env
-
-      - name: Validate Composer configuration
-        run: composer validate --strict
-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Show dev-workspace tool versions
-        run: composer info:version
-
-      - name: Add dev-workspace scripts to PATH
-        run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
-
-      - name: Read plugin metadata and version
-        id: get-metadata
-        run: composer deploy:metadata-github-output
-
       - name: Update WordPress.org plugin assets and readme
         # 10up/action-wordpress-plugin-asset-update@v2.2.0
         uses: 10up/action-wordpress-plugin-asset-update@2480306f6f693672726d08b5917ea114cb2825f7
         env:
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-          SLUG: ${{ steps.get-metadata.outputs.plugin-slug }}
+          SLUG: ${{ inputs.PLUGIN_SLUG }}
           IGNORE_OTHER_FILES: true

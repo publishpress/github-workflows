@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.1.4] - 21 May, 2026
+
+- Fixed: Updated the `deploy-free-assets.yml` workflow to avoid installing unnecessary dependencies during the asset publishing process.
+
 [3.1.3] - 05 May, 2026
 
 - Fixed: Removed the unnecessary pack:dir step from the integration tests workflow for improved clarity and efficiency.
