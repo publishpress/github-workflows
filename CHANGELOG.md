@@ -3,6 +3,15 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.1.6] - 27 May, 2026
+
+- Fixed: Updated `deploy-free-assets.yml` to create the root `.env` file before running Composer so dev-workspace hooks can read plugin metadata during asset publishing.
+
+[3.1.5] - 27 May, 2026
+
+- Fixed: Updated `deploy-free.yml` to use `extra.plugin-folder` as the WordPress.org SVN slug while keeping the build directory aligned with the plugin folder.
+- Fixed: Updated `deploy-free-assets.yml` to use `extra.plugin-folder` as the WordPress.org SVN slug.
+
 [3.1.4] - 21 May, 2026
 
 - Fixed: Updated the `deploy-free-assets.yml` workflow to avoid installing unnecessary dependencies during the asset publishing process.
