@@ -6,7 +6,7 @@ on:
     inputs:
       PLUGIN_SLUG:
         description: WordPress.org plugin slug
-        required: true
+        required: false
         type: string
     secrets:
       SVN_USERNAME:
@@ -35,11 +35,18 @@ jobs:
           extensions: mbstring,xml,curl,zip,intl,bcmath,gettext,mysqli,phar,gd,iconv,yaml
           tools: composer:v2
 
+      - name: Read plugin metadata
+        if: ${{ inputs.PLUGIN_SLUG == '' }}
+        id: get-metadata
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress || true
+          composer deploy:metadata-github-output
+
       - name: Update WordPress.org plugin assets and readme
         # 10up/action-wordpress-plugin-asset-update@v2.2.0
         uses: 10up/action-wordpress-plugin-asset-update@2480306f6f693672726d08b5917ea114cb2825f7
         env:
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-          SLUG: ${{ inputs.PLUGIN_SLUG }}
+          SLUG: ${{ inputs.PLUGIN_SLUG != '' && inputs.PLUGIN_SLUG || steps.get-metadata.outputs.plugin-folder }}
           IGNORE_OTHER_FILES: true
