@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-[3.1.7] - [UNRELEASED]
+[3.2.0] - 29 May, 2026
 
 - Added: Introduced a reusable Dependabot triage workflow that dismisses non-critical development-scope alerts while keeping runtime, critical, and allowlisted packages open.
 
