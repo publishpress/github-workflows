@@ -97,17 +97,16 @@ permissions:
 
 jobs:
   dependabot_triage:
-    name: Auto dismiss dev only Dependabot alerts
+    name: Auto-dismiss dev-only Dependabot alerts
     uses: publishpress/github-workflows/.github/workflows/dependabot-triage.yml@<commit-sha>
     with:
       dry_run: ${{ inputs.dry_run || false }}
-    secrets:
-      DEPENDABOT_ALERTS_TOKEN: ${{ secrets.DEPENDABOT_ALERTS_TOKEN }}
+    secrets: inherit
 ```
 
 The weekly schedule runs on Mondays at 00:00 UTC. Use the manual `workflow_dispatch` trigger with `dry_run: true` to verify which alerts would be dismissed before running it for real.
 
-By default, the workflow uses the caller repository's `GITHUB_TOKEN` with the permissions declared above. If that token cannot manage Dependabot alerts for a repository, add a `DEPENDABOT_ALERTS_TOKEN` repository secret from a PAT or GitHub App token with Dependabot alerts read/write access. The workflow uses that secret when it is available.
+The workflow uses the caller repository's `DEPENDABOT_ALERTS_TOKEN` secret when it is available, then falls back to `GITHUB_TOKEN`. For centralized token management, add `DEPENDABOT_ALERTS_TOKEN` as an organization secret and allow access to the plugin repositories that should use this workflow. The token must have Dependabot alerts read/write access.
 
 ### Deploy free plugin example
 
