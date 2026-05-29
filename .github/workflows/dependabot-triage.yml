@@ -21,7 +21,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Triage open Dependabot alerts
-        uses: actions/github-script@v8.0.0
+        # actions/github-script@v8.0.0
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
         with:
           github-token: ${{ secrets.DEPENDABOT_ALERTS_TOKEN || github.token }}
           script: |
