@@ -1,0 +1,128 @@
+name: Triage Dependabot alerts
+permissions:
+  contents: read
+  security-events: write
+on:
+  workflow_call:
+    inputs:
+      dry_run:
+        description: Log matching alerts without dismissing them
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      DEPENDABOT_ALERTS_TOKEN:
+        required: false
+
+jobs:
+  triage:
+    name: Auto-dismiss dev-only Dependabot alerts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Triage open Dependabot alerts
+        uses: actions/github-script@v7.1.0
+        with:
+          github-token: ${{ secrets.DEPENDABOT_ALERTS_TOKEN || github.token }}
+          script: |
+            const KEEP_OPEN = ['composer/composer'];
+            const DISMISSED_COMMENT = 'Dev-only dependency, not shipped to production.';
+            const DRY_RUN = ${{ inputs.dry_run }};
+            const API_HEADERS = {
+              'X-GitHub-Api-Version': '2026-03-10',
+            };
+
+            const keepOpenPackages = new Set(KEEP_OPEN.map((name) => name.toLowerCase()));
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            let alerts;
+
+            try {
+              alerts = await github.paginate('GET /repos/{owner}/{repo}/dependabot/alerts', {
+                owner,
+                repo,
+                state: 'open',
+                per_page: 100,
+                headers: API_HEADERS,
+              });
+            } catch (error) {
+              if (error.status === 403 || error.status === 404) {
+                core.setFailed(
+                  'Could not list Dependabot alerts. Use a token with Dependabot alerts read/write access in the DEPENDABOT_ALERTS_TOKEN secret, or confirm this repository allows the GITHUB_TOKEN to manage Dependabot alerts.'
+                );
+                throw error;
+              }
+
+              throw error;
+            }
+
+            const result = {
+              dismissed: 0,
+              keptAllowlisted: 0,
+              keptCritical: 0,
+              keptNonDevelopment: 0,
+              wouldDismiss: 0,
+            };
+
+            core.info(`Fetched ${alerts.length} open Dependabot alert(s).`);
+            core.info(DRY_RUN ? 'Dry run enabled. No alerts will be dismissed.' : 'Dry run disabled. Matching alerts will be dismissed.');
+
+            for (const alert of alerts) {
+              const scope = alert.dependency?.scope || 'unknown';
+              const packageName = alert.dependency?.package?.name || 'unknown';
+              const severity = (
+                alert.security_vulnerability?.severity ||
+                alert.security_advisory?.severity ||
+                'unknown'
+              ).toLowerCase();
+
+              if (scope !== 'development') {
+                result.keptNonDevelopment++;
+                core.info(`Keeping #${alert.number} (${packageName}): scope is ${scope}.`);
+                continue;
+              }
+
+              if (severity === 'critical') {
+                result.keptCritical++;
+                core.info(`Keeping #${alert.number} (${packageName}): severity is critical.`);
+                continue;
+              }
+
+              if (keepOpenPackages.has(packageName.toLowerCase())) {
+                result.keptAllowlisted++;
+                core.info(`Keeping #${alert.number} (${packageName}): package is allowlisted.`);
+                continue;
+              }
+
+              if (DRY_RUN) {
+                result.wouldDismiss++;
+                core.info(`Would dismiss #${alert.number} (${packageName}, ${severity}).`);
+                continue;
+              }
+
+              await github.request('PATCH /repos/{owner}/{repo}/dependabot/alerts/{alert_number}', {
+                owner,
+                repo,
+                alert_number: alert.number,
+                state: 'dismissed',
+                dismissed_reason: 'tolerable_risk',
+                dismissed_comment: DISMISSED_COMMENT,
+                headers: API_HEADERS,
+              });
+
+              result.dismissed++;
+              core.info(`Dismissed #${alert.number} (${packageName}, ${severity}).`);
+            }
+
+            await core.summary
+              .addHeading('Dependabot alert triage')
+              .addTable([
+                [{ data: 'Result', header: true }, { data: 'Count', header: true }],
+                ['Dismissed dev-only alerts', String(result.dismissed)],
+                ['Dry-run matches', String(result.wouldDismiss)],
+                ['Kept non-development alerts', String(result.keptNonDevelopment)],
+                ['Kept critical dev alerts', String(result.keptCritical)],
+                ['Kept allowlisted dev alerts', String(result.keptAllowlisted)],
+              ])
+              .write();
