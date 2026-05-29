@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.1.7] - [UNRELEASED]
+
+- Added: Introduced a reusable Dependabot triage workflow that dismisses non-critical development-scope alerts while keeping runtime, critical, and allowlisted packages open.
+
 [3.1.6] - 27 May, 2026
 
 - Fixed: Updated `deploy-free-assets.yml` to create the root `.env` file before running Composer so dev-workspace hooks can read plugin metadata during asset publishing.
