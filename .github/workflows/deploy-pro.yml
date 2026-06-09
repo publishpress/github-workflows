@@ -1,6 +1,6 @@
 name: Deploy pro plugin to PublishPress.com
 permissions:
-  contents: write
+  contents: read
 on:
   workflow_call:
 
@@ -30,25 +30,3 @@ jobs:
 
       - name: Validate Composer configuration
         run: composer validate --strict
-
-      - name: Install Composer dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Show dev-workspace tool versions
-        run: composer info:version
-
-      - name: Add dev-workspace scripts to PATH
-        run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
-
-      - name: Build plugin package
-        run: composer build
-
-      - name: Read plugin metadata and version
-        id: get-metadata
-        run: composer deploy:metadata-github-output
-
-      - name: Upload GitHub release asset
-        # softprops/action-gh-release@v3.0.0
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
-        with:
-          files: ${{ github.workspace }}/dist/${{ steps.get-metadata.outputs.plugin-name }}-${{ steps.get-metadata.outputs.plugin-version }}.zip
