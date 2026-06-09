@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.2.1] - 09 Jun, 2026
+
+- Changed: Simplify the release-pro workflow, temporarily, removing any write operation since the ZIP package is actually uploaded by hand on the release for now.
+
 [3.2.0] - 29 May, 2026
 
 - Added: Introduced a reusable Dependabot triage workflow that dismisses non-critical development-scope alerts while keeping runtime, critical, and allowlisted packages open.
