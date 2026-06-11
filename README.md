@@ -6,7 +6,8 @@ Reusable GitHub Actions workflows for PublishPress plugin repositories.
 
 - `.github/workflows/unit-tests.yml`: Runs PHPUnit tests.
 - `.github/workflows/code-standards.yml`: Runs PHP compatibility and lint checks.
-- `.github/workflows/dependency-security-audit.yml`: Runs Composer dependency security audits.
+- `.github/workflows/code-complexity.yml`: Runs PHP code complexity analysis with PHPMD.
+- `.github/workflows/dependabot-triage.yml`: Auto-dismisses low-risk development-scope Dependabot alerts.
 - `.github/workflows/deploy-free.yml`: Builds and deploys free plugin releases to WordPress.org and uploads release assets to GitHub.
 - `.github/workflows/deploy-free-assets.yml`: Updates WordPress.org plugin assets/readme.
 - `.github/workflows/deploy-pro.yml`: Builds pro plugin packages and uploads release assets to GitHub.
@@ -36,10 +37,10 @@ jobs:
     uses: publishpress/github-workflows/.github/workflows/unit-tests.yml@<commit-sha>
 ```
 
-### Code checks example
+### Code standards example
 
 ```yaml
-name: Code Checks
+name: Code Standards
 
 on:
   pull_request:
@@ -51,9 +52,61 @@ permissions:
   contents: read
 
 jobs:
-  code_check:
-    uses: publishpress/github-workflows/.github/workflows/code-check.yml@<commit-sha>
+  code_standards:
+    uses: publishpress/github-workflows/.github/workflows/code-standards.yml@<commit-sha>
 ```
+
+### Code complexity example
+
+```yaml
+name: Code Complexity
+
+on:
+  pull_request:
+    branches: [ master, development ]
+  push:
+    branches: [ master, development ]
+
+permissions:
+  contents: read
+
+jobs:
+  code_complexity:
+    uses: publishpress/github-workflows/.github/workflows/code-complexity.yml@<commit-sha>
+```
+
+### Dependabot triage example
+
+```yaml
+name: Dependabot Alert Triage
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Log matching alerts without dismissing them
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  dependabot_triage:
+    name: Auto-dismiss dev-only Dependabot alerts
+    uses: publishpress/github-workflows/.github/workflows/dependabot-triage.yml@<commit-sha>
+    with:
+      dry_run: ${{ inputs.dry_run || false }}
+    secrets: inherit
+```
+
+The weekly schedule runs on Mondays at 00:00 UTC. Use the manual `workflow_dispatch` trigger with `dry_run: true` to verify which alerts would be dismissed before running it for real.
+
+The workflow uses the caller repository's `DEPENDABOT_ALERTS_TOKEN` secret when it is available, then falls back to `GITHUB_TOKEN`. For centralized token management, add `DEPENDABOT_ALERTS_TOKEN` as an organization secret and allow access to the plugin repositories that should use this workflow. The token must have Dependabot alerts read/write access.
 
 ### Deploy free plugin example
 

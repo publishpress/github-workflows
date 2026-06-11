@@ -1,4 +1,4 @@
-name: Run integration tests
+name: Analyze code complexity
 permissions:
   contents: read
 on:
@@ -9,9 +9,9 @@ env:
 
 jobs:
   check:
-    name: Run the tests
+    name: Run code complexity analysis
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - name: Checkout repository
         # actions/checkout@v6.0.2
@@ -40,30 +40,5 @@ jobs:
       - name: Add dev-workspace scripts to PATH
         run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
 
-      - name: Read plugin metadata and version
-        id: get-metadata
-        run: composer deploy:metadata-github-output
-
-      - name: Start services
-        run: composer test:up
-        timeout-minutes: 6
-        env:
-          WP_READY_MAX_ATTEMPTS: 60
-          WP_READY_INTERVAL: 5
-
-      - name: Build codeception support classes
-        run: composer codecept build
-
-      - name: Verify container status and fix permissions
-        run: |
-          docker ps
-          echo "Checking marker file..."
-          ls -la $GITHUB_WORKSPACE/dev-workspace-cache/wp_test/wp-content/plugins/${{ steps.get-metadata.outputs.plugin-folder }} || true
-          sleep 15
-          echo "Fixing permissions for test runner..."
-          sudo chown -R $(id -u):$(id -g) $GITHUB_WORKSPACE/dev-workspace-cache
-          sudo chmod -R 777 $GITHUB_WORKSPACE/dev-workspace-cache
-
-
-      - name: Run integration tests
-        run: composer test Integration
+      - name: Run code complexity analysis
+        run: vendor/publishpress/dev-workspace/scripts/run.sh phpmd . text phpmd.ruleset.xml --exclude vendor,lib/vendor,tests,dist,.claude,.cursor,.github,.wordpress-org,.git,.zed,docs,languages

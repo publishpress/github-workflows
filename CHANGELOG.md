@@ -3,6 +3,35 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.2.1] - 09 Jun, 2026
+
+- Changed: Simplify the release-pro workflow, temporarily, removing any write operation since the ZIP package is actually uploaded by hand on the release for now.
+
+[3.2.0] - 29 May, 2026
+
+- Added: Introduced a reusable Dependabot triage workflow that dismisses non-critical development-scope alerts while keeping runtime, critical, and allowlisted packages open.
+
+[3.1.6] - 27 May, 2026
+
+- Fixed: Updated `deploy-free-assets.yml` to create the root `.env` file before running Composer so dev-workspace hooks can read plugin metadata during asset publishing.
+
+[3.1.5] - 27 May, 2026
+
+- Fixed: Updated `deploy-free.yml` to use `extra.plugin-folder` as the WordPress.org SVN slug while keeping the build directory aligned with the plugin folder.
+- Fixed: Updated `deploy-free-assets.yml` to use `extra.plugin-folder` as the WordPress.org SVN slug.
+
+[3.1.4] - 21 May, 2026
+
+- Fixed: Updated the `deploy-free-assets.yml` workflow to avoid installing unnecessary dependencies during the asset publishing process.
+
+[3.1.3] - 05 May, 2026
+
+- Fixed: Removed the unnecessary pack:dir step from the integration tests workflow for improved clarity and efficiency.
+
+[3.1.2] - 05 May, 2026
+
+- Fixed: Resolved issue where the build:dir command was not found.
+
 [3.1.1] - 05 May, 2026
 
 - Fixed: Updated integration tests workflow to dynamically use plugin metadata instead of hardcoded values.

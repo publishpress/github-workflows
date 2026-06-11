@@ -3,6 +3,11 @@ permissions:
   contents: read
 on:
   workflow_call:
+    inputs:
+      PLUGIN_SLUG:
+        description: WordPress.org plugin slug
+        required: false
+        type: string
     secrets:
       SVN_USERNAME:
         required: true
@@ -45,7 +50,8 @@ jobs:
       - name: Add dev-workspace scripts to PATH
         run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
 
-      - name: Read plugin metadata and version
+      - name: Read plugin metadata
+        if: ${{ inputs.PLUGIN_SLUG == '' }}
         id: get-metadata
         run: composer deploy:metadata-github-output
 
@@ -55,5 +61,5 @@ jobs:
         env:
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-          SLUG: ${{ steps.get-metadata.outputs.plugin-slug }}
+          SLUG: ${{ inputs.PLUGIN_SLUG != '' && inputs.PLUGIN_SLUG || steps.get-metadata.outputs.plugin-folder }}
           IGNORE_OTHER_FILES: true
