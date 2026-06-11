@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.3.0] - 11 Jun, 2026
+
+- Added: Introduced a Composer dependency security audit workflow for the `lib` directory.
+
 [3.2.1] - 09 Jun, 2026
 
 - Changed: Simplify the release-pro workflow, temporarily, removing any write operation since the ZIP package is actually uploaded by hand on the release for now.
