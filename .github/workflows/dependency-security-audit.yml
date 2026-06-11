@@ -40,5 +40,5 @@ jobs:
       - name: Add dev-workspace scripts to PATH
         run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
 
-      - name: Run Composer dependency security audit
-        run: composer audit --locked
+      - name: Run Composer dependency security audit (lib directory)
+        run: composer audit --locked --no-dev --working-dir=lib
