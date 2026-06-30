@@ -1,0 +1,101 @@
+name: Sync changelog to WordPress
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: Repository name to send. Defaults to the caller repository name.
+        required: false
+        type: string
+      tag:
+        description: Release tag to sync. Defaults to the release tag or current ref name.
+        required: false
+        type: string
+    secrets:
+      CHANGELOG_SYNC_URL:
+        description: WordPress changelog sync REST endpoint URL.
+        required: true
+      CHANGELOG_SYNC_SECRET:
+        description: Shared HMAC secret configured on the WordPress site.
+        required: true
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: Repository name to send.
+        required: false
+        type: string
+      tag:
+        description: Release tag to sync.
+        required: true
+        type: string
+
+jobs:
+  sync-changelog:
+    name: Notify WordPress changelog bridge
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve payload
+        id: payload
+        shell: bash
+        env:
+          INPUT_REPOSITORY: ${{ inputs.repository }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+
+          repository="${INPUT_REPOSITORY:-$REPOSITORY_NAME}"
+          tag="${INPUT_TAG:-${RELEASE_TAG:-$REF_NAME}}"
+
+          if [[ -z "$repository" ]]; then
+            echo "Repository could not be resolved." >&2
+            exit 1
+          fi
+
+          if [[ -z "$tag" ]]; then
+            echo "Tag could not be resolved." >&2
+            exit 1
+          fi
+
+          body="$(jq -cn --arg repository "$repository" --arg tag "$tag" '{repository:$repository,tag:$tag}')"
+          timestamp="$(date +%s)"
+
+          {
+            echo "body=$body"
+            echo "timestamp=$timestamp"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Sign payload
+        id: signature
+        shell: bash
+        env:
+          BODY: ${{ steps.payload.outputs.body }}
+          TIMESTAMP: ${{ steps.payload.outputs.timestamp }}
+          CHANGELOG_SYNC_SECRET: ${{ secrets.CHANGELOG_SYNC_SECRET }}
+        run: |
+          set -euo pipefail
+          signature="$(printf '%s' "$TIMESTAMP.$BODY" | openssl dgst -sha256 -hmac "$CHANGELOG_SYNC_SECRET" -binary | xxd -p -c 256)"
+          echo "signature=sha256=$signature" >> "$GITHUB_OUTPUT"
+
+      - name: Call changelog bridge
+        shell: bash
+        env:
+          CHANGELOG_SYNC_URL: ${{ secrets.CHANGELOG_SYNC_URL }}
+          BODY: ${{ steps.payload.outputs.body }}
+          TIMESTAMP: ${{ steps.payload.outputs.timestamp }}
+          SIGNATURE: ${{ steps.signature.outputs.signature }}
+        run: |
+          set -euo pipefail
+
+          curl --fail-with-body --show-error --silent \
+            --request POST "$CHANGELOG_SYNC_URL" \
+            --header "Content-Type: application/json" \
+            --header "X-PublishPress-Changelog-Timestamp: $TIMESTAMP" \
+            --header "X-PublishPress-Changelog-Signature: $SIGNATURE" \
+            --data "$BODY"

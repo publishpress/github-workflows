@@ -3,6 +3,13 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+- Added a reusable changelog sync workflow that can be called from plugin release workflows.
+- Added manual `workflow_dispatch` support so changelog sync can be retriggered for a specific release tag.
+- Added HMAC request signing for changelog sync requests sent to WordPress.
+- Documented using inherited organization or repository secrets for `CHANGELOG_SYNC_URL` and `CHANGELOG_SYNC_SECRET`.
+
 [3.3.0] - 11 Jun, 2026
 
 - Added: Introduced a Composer dependency security audit workflow for the `lib` directory.
