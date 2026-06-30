@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       repository:
-        description: Repository name to send. Defaults to the caller repository name.
+        description: Repository full name to send. Defaults to the caller owner/repository.
         required: false
         type: string
       tag:
@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       repository:
-        description: Repository name to send.
+        description: Repository full name to send.
         required: false
         type: string
       tag:
@@ -46,15 +46,27 @@ jobs:
           INPUT_TAG: ${{ inputs.tag }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           REF_NAME: ${{ github.ref_name }}
-          REPOSITORY_NAME: ${{ github.event.repository.name }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          REPOSITORY_FULL_NAME: ${{ github.repository }}
         run: |
           set -euo pipefail
 
-          repository="${INPUT_REPOSITORY:-$REPOSITORY_NAME}"
+          raw_repository="${INPUT_REPOSITORY:-$REPOSITORY_FULL_NAME}"
           tag="${INPUT_TAG:-${RELEASE_TAG:-$REF_NAME}}"
 
-          if [[ -z "$repository" ]]; then
+          if [[ -z "$raw_repository" ]]; then
             echo "Repository could not be resolved." >&2
+            exit 1
+          fi
+
+          if [[ "$raw_repository" == */* ]]; then
+            repository="$raw_repository"
+          else
+            repository="$REPOSITORY_OWNER/$raw_repository"
+          fi
+
+          if [[ ! "$repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "Repository must use the owner/repository format." >&2
             exit 1
           fi
 
@@ -80,7 +92,20 @@ jobs:
           CHANGELOG_SYNC_SECRET: ${{ secrets.CHANGELOG_SYNC_SECRET }}
         run: |
           set -euo pipefail
-          signature="$(printf '%s' "$TIMESTAMP.$BODY" | openssl dgst -sha256 -hmac "$CHANGELOG_SYNC_SECRET" -binary | xxd -p -c 256)"
+          signature="$(
+            python3 - <<'PY'
+          import hashlib
+          import hmac
+          import os
+
+          body = os.environ["BODY"]
+          timestamp = os.environ["TIMESTAMP"]
+          secret = os.environ["CHANGELOG_SYNC_SECRET"].encode()
+          message = f"{timestamp}.{body}".encode()
+
+          print(hmac.new(secret, message, hashlib.sha256).hexdigest())
+          PY
+          )"
           echo "signature=sha256=$signature" >> "$GITHUB_OUTPUT"
 
       - name: Call changelog bridge
@@ -92,6 +117,11 @@ jobs:
           SIGNATURE: ${{ steps.signature.outputs.signature }}
         run: |
           set -euo pipefail
+
+          if [[ "$CHANGELOG_SYNC_URL" != https://* ]]; then
+            echo "CHANGELOG_SYNC_URL must use https." >&2
+            exit 1
+          fi
 
           curl --fail-with-body --show-error --silent \
             --request POST "$CHANGELOG_SYNC_URL" \
