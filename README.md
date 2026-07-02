@@ -169,7 +169,9 @@ jobs:
     secrets: inherit
 ```
 
-### Sync changelog example
+### Sync changelog
+
+Use this when a release should notify the configured WordPress changelog bridge sites. Endpoint errors are reported as GitHub Actions warnings and do not fail the release workflow.
 
 ```yaml
 name: Sync Changelog
@@ -195,7 +197,9 @@ jobs:
     secrets: inherit
 ```
 
-Required repository or organization secrets:
+Supported repository or organization secrets:
 
-- `CHANGELOG_SYNC_URL`: WordPress REST endpoint, for example `https://example.com/wp-json/publishpress-changelog/v1/sync`.
-- `CHANGELOG_SYNC_SECRET`: Shared HMAC secret configured on the WordPress site.
+- `CHANGELOG_SYNC_URL_STAGING`: Staging WordPress REST endpoint, for example `https://staging.example.com/wp-json/publishpress-changelog/v1/sync`.
+- `CHANGELOG_SYNC_SECRET_STAGING`: Shared HMAC secret configured on the staging WordPress site.
+- `CHANGELOG_SYNC_URL_PRODUCTION`: Production WordPress REST endpoint, for example `https://example.com/wp-json/publishpress-changelog/v1/sync`.
+- `CHANGELOG_SYNC_SECRET_PRODUCTION`: Shared HMAC secret configured on the production WordPress site.

@@ -15,12 +15,18 @@ on:
         required: false
         type: string
     secrets:
-      CHANGELOG_SYNC_URL:
-        description: WordPress changelog sync REST endpoint URL.
-        required: true
-      CHANGELOG_SYNC_SECRET:
-        description: Shared HMAC secret configured on the WordPress site.
-        required: true
+      CHANGELOG_SYNC_URL_STAGING:
+        description: Staging WordPress changelog sync REST endpoint URL.
+        required: false
+      CHANGELOG_SYNC_SECRET_STAGING:
+        description: Shared HMAC secret configured on the staging WordPress site.
+        required: false
+      CHANGELOG_SYNC_URL_PRODUCTION:
+        description: Production WordPress changelog sync REST endpoint URL.
+        required: false
+      CHANGELOG_SYNC_SECRET_PRODUCTION:
+        description: Shared HMAC secret configured on the production WordPress site.
+        required: false
   workflow_dispatch:
     inputs:
       repository:
@@ -83,49 +89,65 @@ jobs:
             echo "timestamp=$timestamp"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Sign payload
-        id: signature
+      - name: Call changelog bridge endpoints
         shell: bash
         env:
           BODY: ${{ steps.payload.outputs.body }}
           TIMESTAMP: ${{ steps.payload.outputs.timestamp }}
-          CHANGELOG_SYNC_SECRET: ${{ secrets.CHANGELOG_SYNC_SECRET }}
+          CHANGELOG_SYNC_URL_STAGING: ${{ secrets.CHANGELOG_SYNC_URL_STAGING }}
+          CHANGELOG_SYNC_SECRET_STAGING: ${{ secrets.CHANGELOG_SYNC_SECRET_STAGING }}
+          CHANGELOG_SYNC_URL_PRODUCTION: ${{ secrets.CHANGELOG_SYNC_URL_PRODUCTION }}
+          CHANGELOG_SYNC_SECRET_PRODUCTION: ${{ secrets.CHANGELOG_SYNC_SECRET_PRODUCTION }}
         run: |
-          set -euo pipefail
-          signature="$(
-            python3 - <<'PY'
-          import hashlib
-          import hmac
-          import os
+          set -uo pipefail
 
-          body = os.environ["BODY"]
-          timestamp = os.environ["TIMESTAMP"]
-          secret = os.environ["CHANGELOG_SYNC_SECRET"].encode()
-          message = f"{timestamp}.{body}".encode()
+          configured=0
 
-          print(hmac.new(secret, message, hashlib.sha256).hexdigest())
-          PY
-          )"
-          echo "signature=sha256=$signature" >> "$GITHUB_OUTPUT"
+          call_endpoint() {
+            local environment="$1"
+            local url="$2"
+            local secret="$3"
 
-      - name: Call changelog bridge
-        shell: bash
-        env:
-          CHANGELOG_SYNC_URL: ${{ secrets.CHANGELOG_SYNC_URL }}
-          BODY: ${{ steps.payload.outputs.body }}
-          TIMESTAMP: ${{ steps.payload.outputs.timestamp }}
-          SIGNATURE: ${{ steps.signature.outputs.signature }}
-        run: |
-          set -euo pipefail
+            if [[ -z "$url" && -z "$secret" ]]; then
+              echo "Skipping $environment changelog sync because no endpoint secrets are configured."
+              return 0
+            fi
 
-          if [[ "$CHANGELOG_SYNC_URL" != https://* ]]; then
-            echo "CHANGELOG_SYNC_URL must use https." >&2
-            exit 1
+            if [[ -z "$url" || -z "$secret" ]]; then
+              echo "::warning::Skipping $environment changelog sync because both URL and secret must be configured."
+              return 0
+            fi
+
+            configured=1
+
+            if [[ "$url" != https://* ]]; then
+              echo "::warning::Skipping $environment changelog sync because the URL must use https."
+              return 0
+            fi
+
+            local signature
+            signature="$(
+              CHANGELOG_SYNC_SECRET="$secret" python3 -c 'import hashlib, hmac, os; body = os.environ["BODY"]; timestamp = os.environ["TIMESTAMP"]; secret = os.environ["CHANGELOG_SYNC_SECRET"].encode(); message = f"{timestamp}.{body}".encode(); print(hmac.new(secret, message, hashlib.sha256).hexdigest())'
+            )"
+
+            echo "Calling $environment changelog sync endpoint..."
+
+            if ! curl --fail-with-body --show-error --silent \
+              --request POST "$url" \
+              --header "Content-Type: application/json" \
+              --header "X-PublishPress-Changelog-Timestamp: $TIMESTAMP" \
+              --header "X-PublishPress-Changelog-Signature: sha256=$signature" \
+              --data "$BODY"; then
+              echo "::warning::$environment changelog sync failed. Release workflow will continue."
+              return 0
+            fi
+
+            echo "$environment changelog sync completed."
+          }
+
+          call_endpoint "staging" "$CHANGELOG_SYNC_URL_STAGING" "$CHANGELOG_SYNC_SECRET_STAGING"
+          call_endpoint "production" "$CHANGELOG_SYNC_URL_PRODUCTION" "$CHANGELOG_SYNC_SECRET_PRODUCTION"
+
+          if [[ "$configured" -eq 0 ]]; then
+            echo "::warning::No changelog sync endpoints were configured."
           fi
-
-          curl --fail-with-body --show-error --silent \
-            --request POST "$CHANGELOG_SYNC_URL" \
-            --header "Content-Type: application/json" \
-            --header "X-PublishPress-Changelog-Timestamp: $TIMESTAMP" \
-            --header "X-PublishPress-Changelog-Signature: $SIGNATURE" \
-            --data "$BODY"
