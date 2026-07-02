@@ -171,7 +171,7 @@ jobs:
 
 ### Sync changelog
 
-Use this when a release should notify the configured WordPress changelog bridge sites. Endpoint errors are reported as GitHub Actions warnings and do not fail the release workflow.
+Use this when a release should notify the configured WordPress changelog bridge sites. The workflow sends the repository name only; Changelog Bridge resolves the latest GitHub release changelog and falls back to the default branch when needed. Endpoint errors are reported as GitHub Actions warnings and do not fail the release workflow.
 
 ```yaml
 name: Sync Changelog
@@ -180,11 +180,6 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: Release tag to sync
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -192,8 +187,6 @@ permissions:
 jobs:
   sync_changelog:
     uses: publishpress/github-workflows/.github/workflows/sync-changelog.yml@<commit-sha>
-    with:
-      tag: ${{ github.event.release.tag_name || inputs.tag }}
     secrets: inherit
 ```
 

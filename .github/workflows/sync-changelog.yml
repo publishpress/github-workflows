@@ -10,10 +10,6 @@ on:
         description: Repository full name to send. Defaults to the caller owner/repository.
         required: false
         type: string
-      tag:
-        description: Release tag to sync. Defaults to the release tag or current ref name.
-        required: false
-        type: string
     secrets:
       CHANGELOG_SYNC_URL_STAGING:
         description: Staging WordPress changelog sync REST endpoint URL.
@@ -33,10 +29,6 @@ on:
         description: Repository full name to send.
         required: false
         type: string
-      tag:
-        description: Release tag to sync.
-        required: true
-        type: string
 
 jobs:
   sync-changelog:
@@ -49,16 +41,12 @@ jobs:
         shell: bash
         env:
           INPUT_REPOSITORY: ${{ inputs.repository }}
-          INPUT_TAG: ${{ inputs.tag }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-          REF_NAME: ${{ github.ref_name }}
           REPOSITORY_OWNER: ${{ github.repository_owner }}
           REPOSITORY_FULL_NAME: ${{ github.repository }}
         run: |
           set -euo pipefail
 
           raw_repository="${INPUT_REPOSITORY:-$REPOSITORY_FULL_NAME}"
-          tag="${INPUT_TAG:-${RELEASE_TAG:-$REF_NAME}}"
 
           if [[ -z "$raw_repository" ]]; then
             echo "Repository could not be resolved." >&2
@@ -76,12 +64,7 @@ jobs:
             exit 1
           fi
 
-          if [[ -z "$tag" ]]; then
-            echo "Tag could not be resolved." >&2
-            exit 1
-          fi
-
-          body="$(jq -cn --arg repository "$repository" --arg tag "$tag" '{repository:$repository,tag:$tag}')"
+          body="$(jq -cn --arg repository "$repository" '{repository:$repository}')"
           timestamp="$(date +%s)"
 
           {
