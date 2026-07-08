@@ -11,6 +11,7 @@ Reusable GitHub Actions workflows for PublishPress plugin repositories.
 - `.github/workflows/deploy-free.yml`: Builds and deploys free plugin releases to WordPress.org and uploads release assets to GitHub.
 - `.github/workflows/deploy-free-assets.yml`: Updates WordPress.org plugin assets/readme.
 - `.github/workflows/deploy-pro.yml`: Builds pro plugin packages and uploads release assets to GitHub.
+- `.github/workflows/sync-changelog.yml`: Notifies a WordPress changelog bridge endpoint after a release is published.
 
 ## Usage
 
@@ -167,3 +168,31 @@ jobs:
     uses: publishpress/github-workflows/.github/workflows/deploy-free-assets.yml@<commit-sha>
     secrets: inherit
 ```
+
+### Sync changelog
+
+Use this when a release should notify the configured WordPress changelog bridge sites. The workflow sends the repository name only; Changelog Bridge resolves the latest GitHub release changelog and falls back to the default branch when needed. Endpoint errors are reported as GitHub Actions warnings and do not fail the release workflow.
+
+```yaml
+name: Sync Changelog
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync_changelog:
+    uses: publishpress/github-workflows/.github/workflows/sync-changelog.yml@<commit-sha>
+    secrets: inherit
+```
+
+Supported repository or organization secrets:
+
+- `CHANGELOG_SYNC_URL_STAGING`: Staging WordPress REST endpoint, for example `https://staging.example.com/wp-json/publishpress-changelog/v1/sync`.
+- `CHANGELOG_SYNC_SECRET_STAGING`: Shared HMAC secret configured on the staging WordPress site.
+- `CHANGELOG_SYNC_URL_PRODUCTION`: Production WordPress REST endpoint, for example `https://example.com/wp-json/publishpress-changelog/v1/sync`.
+- `CHANGELOG_SYNC_SECRET_PRODUCTION`: Shared HMAC secret configured on the production WordPress site.
