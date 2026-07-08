@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+[3.4.0] - 08 July, 2026
 
 - Added a reusable changelog sync workflow.
 
