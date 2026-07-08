@@ -1,0 +1,136 @@
+name: Sync changelog to WordPress
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: Repository full name to send. Defaults to the caller owner/repository.
+        required: false
+        type: string
+    secrets:
+      CHANGELOG_SYNC_URL_STAGING:
+        description: Staging WordPress changelog sync REST endpoint URL.
+        required: false
+      CHANGELOG_SYNC_SECRET_STAGING:
+        description: Shared HMAC secret configured on the staging WordPress site.
+        required: false
+      CHANGELOG_SYNC_URL_PRODUCTION:
+        description: Production WordPress changelog sync REST endpoint URL.
+        required: false
+      CHANGELOG_SYNC_SECRET_PRODUCTION:
+        description: Shared HMAC secret configured on the production WordPress site.
+        required: false
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: Repository full name to send.
+        required: false
+        type: string
+
+jobs:
+  sync-changelog:
+    name: Notify WordPress changelog bridge
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve payload
+        id: payload
+        shell: bash
+        env:
+          INPUT_REPOSITORY: ${{ inputs.repository }}
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          REPOSITORY_FULL_NAME: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          raw_repository="${INPUT_REPOSITORY:-$REPOSITORY_FULL_NAME}"
+
+          if [[ -z "$raw_repository" ]]; then
+            echo "Repository could not be resolved." >&2
+            exit 1
+          fi
+
+          if [[ "$raw_repository" == */* ]]; then
+            repository="$raw_repository"
+          else
+            repository="$REPOSITORY_OWNER/$raw_repository"
+          fi
+
+          if [[ ! "$repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "Repository must use the owner/repository format." >&2
+            exit 1
+          fi
+
+          body="$(jq -cn --arg repository "$repository" '{repository:$repository}')"
+          timestamp="$(date +%s)"
+
+          {
+            echo "body=$body"
+            echo "timestamp=$timestamp"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Call changelog bridge endpoints
+        shell: bash
+        env:
+          BODY: ${{ steps.payload.outputs.body }}
+          TIMESTAMP: ${{ steps.payload.outputs.timestamp }}
+          CHANGELOG_SYNC_URL_STAGING: ${{ secrets.CHANGELOG_SYNC_URL_STAGING }}
+          CHANGELOG_SYNC_SECRET_STAGING: ${{ secrets.CHANGELOG_SYNC_SECRET_STAGING }}
+          CHANGELOG_SYNC_URL_PRODUCTION: ${{ secrets.CHANGELOG_SYNC_URL_PRODUCTION }}
+          CHANGELOG_SYNC_SECRET_PRODUCTION: ${{ secrets.CHANGELOG_SYNC_SECRET_PRODUCTION }}
+        run: |
+          set -uo pipefail
+
+          configured=0
+
+          call_endpoint() {
+            local environment="$1"
+            local url="$2"
+            local secret="$3"
+
+            if [[ -z "$url" && -z "$secret" ]]; then
+              echo "Skipping $environment changelog sync because no endpoint secrets are configured."
+              return 0
+            fi
+
+            if [[ -z "$url" || -z "$secret" ]]; then
+              echo "::warning::Skipping $environment changelog sync because both URL and secret must be configured."
+              return 0
+            fi
+
+            configured=1
+
+            if [[ "$url" != https://* ]]; then
+              echo "::warning::Skipping $environment changelog sync because the URL must use https."
+              return 0
+            fi
+
+            local signature
+            signature="$(
+              CHANGELOG_SYNC_SECRET="$secret" python3 -c 'import hashlib, hmac, os; body = os.environ["BODY"]; timestamp = os.environ["TIMESTAMP"]; secret = os.environ["CHANGELOG_SYNC_SECRET"].encode(); message = f"{timestamp}.{body}".encode(); print(hmac.new(secret, message, hashlib.sha256).hexdigest())'
+            )"
+
+            echo "Calling $environment changelog sync endpoint..."
+
+            if ! curl --fail-with-body --show-error --silent \
+              --request POST "$url" \
+              --header "Content-Type: application/json" \
+              --header "X-PublishPress-Changelog-Timestamp: $TIMESTAMP" \
+              --header "X-PublishPress-Changelog-Signature: sha256=$signature" \
+              --data "$BODY"; then
+              echo "::warning::$environment changelog sync failed. Release workflow will continue."
+              return 0
+            fi
+
+            echo "$environment changelog sync completed."
+          }
+
+          call_endpoint "staging" "$CHANGELOG_SYNC_URL_STAGING" "$CHANGELOG_SYNC_SECRET_STAGING"
+          call_endpoint "production" "$CHANGELOG_SYNC_URL_PRODUCTION" "$CHANGELOG_SYNC_SECRET_PRODUCTION"
+
+          if [[ "$configured" -eq 0 ]]; then
+            echo "::warning::No changelog sync endpoints were configured."
+          fi
