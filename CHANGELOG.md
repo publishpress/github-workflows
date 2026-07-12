@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.4.0] - 08 July, 2026
+
+- Added a reusable changelog sync workflow.
+
 [3.3.0] - 11 Jun, 2026
 
 - Added: Introduced a Composer dependency security audit workflow for the `lib` directory.
