@@ -93,11 +93,13 @@ jobs:
 
             if [[ -z "$url" && -z "$secret" ]]; then
               echo "Skipping $environment changelog sync because no endpoint secrets are configured."
+              write_environment_summary "$environment" "skipped" "n/a" "n/a" "n/a" "n/a" "No endpoint secrets are configured." "0"
               return 0
             fi
 
             if [[ -z "$url" || -z "$secret" ]]; then
               echo "::warning::Skipping $environment changelog sync because both URL and secret must be configured."
+              write_environment_summary "$environment" "skipped" "n/a" "n/a" "n/a" "n/a" "Both URL and secret must be configured." "0"
               return 0
             fi
 
@@ -105,6 +107,7 @@ jobs:
 
             if [[ "$url" != https://* ]]; then
               echo "::warning::Skipping $environment changelog sync because the URL must use https."
+              write_environment_summary "$environment" "skipped" "n/a" "n/a" "n/a" "n/a" "The endpoint URL must use https." "0"
               return 0
             fi
 
@@ -115,17 +118,154 @@ jobs:
 
             echo "Calling $environment changelog sync endpoint..."
 
-            if ! curl --fail-with-body --show-error --silent \
+            local response
+            local curl_status
+            response="$(curl --fail-with-body --show-error --silent \
               --request POST "$url" \
               --header "Content-Type: application/json" \
               --header "X-PublishPress-Changelog-Timestamp: $TIMESTAMP" \
               --header "X-PublishPress-Changelog-Signature: sha256=$signature" \
-              --data "$BODY"; then
+              --data "$BODY")"
+            curl_status=$?
+
+            if [[ "$curl_status" -ne 0 ]]; then
+              if [[ -n "$response" ]]; then
+                echo "$response"
+              fi
               echo "::warning::$environment changelog sync failed. Release workflow will continue."
+              write_environment_summary "$environment" "failed" "n/a" "n/a" "n/a" "n/a" "Request failed. Check the workflow log for the endpoint response." "0"
               return 0
             fi
 
+            print_response_summary "$environment" "$response"
             echo "$environment changelog sync completed."
+          }
+
+          print_response_summary() {
+            local environment="$1"
+            local response="$2"
+
+            if ! jq -e . >/dev/null 2>&1 <<< "$response"; then
+              echo "$environment changelog sync returned a non-JSON response:"
+              echo "$response"
+              write_environment_summary "$environment" "failed" "n/a" "n/a" "n/a" "n/a" "Endpoint returned a non-JSON response." "0"
+              return 0
+            fi
+
+            local success status repository requested source_ref source updated_targets
+            success="$(jq -r '.success // false' <<< "$response")"
+            status="$(jq -r '.data.status // "unknown"' <<< "$response")"
+            repository="$(jq -r '.data.repository // "n/a"' <<< "$response")"
+            requested="$(jq -r '.data.requestedRepository // "n/a"' <<< "$response")"
+            source_ref="$(jq -r '.data.sourceRef // "n/a"' <<< "$response")"
+            source="$(jq -r '.data.source // .data.message // "n/a"' <<< "$response")"
+            updated_targets="$(jq -r '.data.updatedTargets // (.data.targets // [] | length)' <<< "$response")"
+            local summary_status
+            if [[ "$success" == "true" && "$status" == "updated" ]]; then
+              summary_status="success"
+            elif [[ "$success" == "true" ]]; then
+              summary_status="$status"
+            else
+              summary_status="failed"
+            fi
+
+            {
+              echo ""
+              echo "$environment changelog sync result:"
+              echo "| Field | Value |"
+              echo "| --- | --- |"
+              echo "| Status | $(status_label "$summary_status") |"
+              echo "| Success | $success |"
+              echo "| Status | $status |"
+              echo "| Repository | $repository |"
+              echo "| Requested repository | $requested |"
+              echo "| Source ref | $source_ref |"
+              echo "| Source | $source |"
+              echo "| Updated targets | $updated_targets |"
+            }
+
+            if jq -e '.data.targets and (.data.targets | length > 0)' >/dev/null 2>&1 <<< "$response"; then
+              {
+                echo ""
+                echo "$environment changelog sync targets:"
+                echo "| Type | ID | Label | Repository | Repository Type |"
+                echo "| --- | --- | --- | --- | --- |"
+                jq -r '.data.targets[] | "| \(.type // "n/a") | \(.id // "n/a") | \(.label // "n/a") | \(.repository // "n/a") | \(.repositoryType // "n/a") |"' <<< "$response"
+              }
+            fi
+
+            write_environment_summary "$environment" "$summary_status" "$repository" "$requested" "$source_ref" "$source" "$status" "$updated_targets"
+
+            if jq -e '.data.targets and (.data.targets | length > 0)' >/dev/null 2>&1 <<< "$response"; then
+              {
+                echo "<details>"
+                echo "<summary>$environment updated targets</summary>"
+                echo ""
+                echo "| Type | ID | Label | Repository | Repository Type |"
+                echo "| --- | --- | --- | --- | --- |"
+                jq -r '.data.targets[] | "| \(.type // "n/a") | \(.id // "n/a") | \(.label // "n/a") | \(.repository // "n/a") | \(.repositoryType // "n/a") |"' <<< "$response"
+                echo ""
+                echo "</details>"
+                echo ""
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          }
+
+          status_label() {
+            local status="$1"
+
+            case "$status" in
+              success|updated)
+                echo "🟢 Success"
+                ;;
+              missing|skipped)
+                echo "🟡 ${status^}"
+                ;;
+              failed|error)
+                echo "🔴 Failed"
+                ;;
+              *)
+                echo "⚪ $status"
+                ;;
+            esac
+          }
+
+          escape_html() {
+            local value="$1"
+            value="${value//&/&amp;}"
+            value="${value//</&lt;}"
+            value="${value//>/&gt;}"
+            value="${value//\"/&quot;}"
+            echo "$value"
+          }
+
+          write_environment_summary() {
+            local environment="$1"
+            local status="$2"
+            local repository="$3"
+            local requested="$4"
+            local source_ref="$5"
+            local source="$6"
+            local message="$7"
+            local updated_targets="$8"
+            local label
+            label="$(status_label "$status")"
+
+            {
+              echo "### $environment changelog sync"
+              echo ""
+              echo "<table>"
+              echo "  <tr><th align=\"left\">Field</th><th align=\"left\">Value</th></tr>"
+              echo "  <tr><td>Status</td><td><strong>$(escape_html "$label")</strong></td></tr>"
+              echo "  <tr><td>Repository</td><td><code>$(escape_html "$repository")</code></td></tr>"
+              echo "  <tr><td>Requested repository</td><td><code>$(escape_html "$requested")</code></td></tr>"
+              echo "  <tr><td>Source ref</td><td><code>$(escape_html "$source_ref")</code></td></tr>"
+              echo "  <tr><td>Source</td><td>$(escape_html "$source")</td></tr>"
+              echo "  <tr><td>Message</td><td>$(escape_html "$message")</td></tr>"
+              echo "  <tr><td>Updated targets</td><td>$(escape_html "$updated_targets")</td></tr>"
+              echo "</table>"
+              echo ""
+            } >> "$GITHUB_STEP_SUMMARY"
           }
 
           call_endpoint "staging" "$CHANGELOG_SYNC_URL_STAGING" "$CHANGELOG_SYNC_SECRET_STAGING"
