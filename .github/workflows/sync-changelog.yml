@@ -120,6 +120,7 @@ jobs:
 
             local response
             local curl_status
+            set +e
             response="$(curl --fail-with-body --show-error --silent \
               --request POST "$url" \
               --header "Content-Type: application/json" \
@@ -127,6 +128,7 @@ jobs:
               --header "X-PublishPress-Changelog-Signature: sha256=$signature" \
               --data "$BODY")"
             curl_status=$?
+            set -e
 
             if [[ "$curl_status" -ne 0 ]]; then
               if [[ -n "$response" ]]; then
