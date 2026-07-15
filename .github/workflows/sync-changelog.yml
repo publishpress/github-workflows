@@ -173,7 +173,7 @@ jobs:
 
             {
               echo ""
-              echo "$environment changelog sync result:"
+              echo "$(environment_label "$environment") changelog sync result:"
               echo "| Field | Value |"
               echo "| --- | --- |"
               echo "| Status | $(status_label "$summary_status") |"
@@ -189,7 +189,7 @@ jobs:
             if jq -e '.data.targets and (.data.targets | length > 0)' >/dev/null 2>&1 <<< "$response"; then
               {
                 echo ""
-                echo "$environment changelog sync targets:"
+                echo "$(environment_label "$environment") changelog sync targets:"
                 echo "| Type | ID | Label | Repository | Repository Type |"
                 echo "| --- | --- | --- | --- | --- |"
                 jq -r '.data.targets[] | "| \(.type // "n/a") | \(.id // "n/a") | \(.label // "n/a") | \(.repository // "n/a") | \(.repositoryType // "n/a") |"' <<< "$response"
@@ -201,7 +201,7 @@ jobs:
             if jq -e '.data.targets and (.data.targets | length > 0)' >/dev/null 2>&1 <<< "$response"; then
               {
                 echo "<details>"
-                echo "<summary>$environment updated targets</summary>"
+                echo "<summary>$(environment_label "$environment") updated targets</summary>"
                 echo ""
                 echo "| Type | ID | Label | Repository | Repository Type |"
                 echo "| --- | --- | --- | --- | --- |"
@@ -232,6 +232,22 @@ jobs:
             esac
           }
 
+          environment_label() {
+            local environment="$1"
+
+            case "$environment" in
+              production)
+                echo "Production"
+                ;;
+              staging)
+                echo "Staging"
+                ;;
+              *)
+                echo "${environment^}"
+                ;;
+            esac
+          }
+
           escape_html() {
             local value="$1"
             value="${value//&/&amp;}"
@@ -251,10 +267,12 @@ jobs:
             local message="$7"
             local updated_targets="$8"
             local label
+            local environment_title
             label="$(status_label "$status")"
+            environment_title="$(environment_label "$environment")"
 
             {
-              echo "### $environment changelog sync"
+              echo "### $environment_title Changelog Sync"
               echo ""
               echo "<table>"
               echo "  <tr><th align=\"left\">Field</th><th align=\"left\">Value</th></tr>"
@@ -270,8 +288,8 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           }
 
-          call_endpoint "staging" "$CHANGELOG_SYNC_URL_STAGING" "$CHANGELOG_SYNC_SECRET_STAGING"
           call_endpoint "production" "$CHANGELOG_SYNC_URL_PRODUCTION" "$CHANGELOG_SYNC_SECRET_PRODUCTION"
+          call_endpoint "staging" "$CHANGELOG_SYNC_URL_STAGING" "$CHANGELOG_SYNC_SECRET_STAGING"
 
           if [[ "$configured" -eq 0 ]]; then
             echo "::warning::No changelog sync endpoints were configured."
