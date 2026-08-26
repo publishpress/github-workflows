@@ -1,0 +1,26 @@
+name: Validate free plugin release
+description: Fail unless the GitHub release tag is stable, on the stable branch, and matches the built plugin version.
+
+inputs:
+  release-tag:
+    description: GitHub release tag name
+    required: true
+  stable-branch:
+    description: Branch that must contain the tagged commit
+    required: false
+    default: master
+  built-version:
+    description: Plugin Version header from the built package
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Validate release tag, branch, and built version
+      shell: bash
+      env:
+        RELEASE_TAG: ${{ inputs.release-tag }}
+        STABLE_BRANCH: ${{ inputs.stable-branch }}
+        BUILT_VERSION: ${{ inputs.built-version }}
+        REPO_ROOT: ${{ github.workspace }}
+      run: bash "${{ github.action_path }}/validate.sh"
