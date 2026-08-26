@@ -115,9 +115,8 @@ The workflow uses the caller repository's `DEPENDABOT_ALERTS_TOKEN` secret when 
 name: Deploy Free Plugin
 
 on:
-  push:
-    tags:
-      - "v*"
+  release:
+    types: [released]
 
 permissions:
   contents: write
@@ -125,6 +124,8 @@ permissions:
 jobs:
   deploy_free:
     uses: publishpress/github-workflows/.github/workflows/deploy-free.yml@<commit-sha>
+    with:
+      stable_branch: master
     secrets: inherit
 ```
 
@@ -132,6 +133,16 @@ Required repository secrets for WordPress.org deploy:
 
 - `SVN_USERNAME`
 - `SVN_PASSWORD`
+
+The workflow fails before uploading to GitHub or WordPress.org unless all of the following are true:
+
+- The GitHub release tag is a stable `x.y.z` version (no `-beta` / `-rc` / `-alpha` suffix)
+- The tagged commit is contained in `stable_branch` (`master` by default)
+- The built plugin `Version` header equals the release tag
+
+Optional `workflow_call` input:
+
+- `stable_branch`: branch that must contain the tagged commit (default `master`)
 
 ### Deploy pro plugin example
 

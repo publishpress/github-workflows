@@ -3,6 +3,12 @@ permissions:
   contents: write
 on:
   workflow_call:
+    inputs:
+      stable_branch:
+        description: Branch that a stable release tag commit must be contained in
+        required: false
+        type: string
+        default: master
     secrets:
       SVN_USERNAME:
         required: true
@@ -21,6 +27,8 @@ jobs:
       - name: Checkout repository
         # actions/checkout@v6.0.2
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0
 
       - name: Set up PHP
         # shivammathur/setup-php@2.37.0
@@ -51,6 +59,27 @@ jobs:
       - name: Read plugin metadata and version
         id: get-metadata
         run: composer deploy:metadata-github-output
+
+      - name: Checkout release validation helper
+        # Same SHA as this reusable workflow so callers of @v3 get matching helpers.
+        # actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          repository: publishpress/github-workflows
+          ref: ${{ github.workflow_sha || 'v3' }}
+          path: .pp-github-workflows
+          persist-credentials: false
+          sparse-checkout: |
+            .github/actions/validate-free-release
+          sparse-checkout-cone-mode: false
+
+      - name: Validate release tag, branch, and built version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          STABLE_BRANCH: ${{ inputs.stable_branch }}
+          BUILT_VERSION: ${{ steps.get-metadata.outputs.plugin-version }}
+          REPO_ROOT: ${{ github.workspace }}
+        run: bash "${{ github.workspace }}/.pp-github-workflows/.github/actions/validate-free-release/validate.sh"
 
       - name: Upload GitHub release asset
         # softprops/action-gh-release@v3.0.0
