@@ -3,10 +3,12 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[3.4.1] - 28 August, 2026
 
 - Added: `deploy-free.yml` rejects GitHub releases whose tag is not a stable `x.y.z` version, whose commit is not on `stable_branch` (default `master`), or whose built plugin version does not match the tag.
+- Changed: `sync-changelog.yml` writes a GitHub Actions job summary for production and staging (status, source, and updated targets).
 - Fixed: `deploy-free.yml` checks out the release validation helper from this reusable workflow's commit (`job.workflow_sha`) instead of the caller plugin's SHA.
+- Fixed: Changelog sync endpoint failures no longer fail the calling workflow.
 
 [3.4.0] - 08 July, 2026
 
