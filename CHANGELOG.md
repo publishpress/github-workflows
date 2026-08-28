@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 [Unreleased]
 
 - Added: `deploy-free.yml` rejects GitHub releases whose tag is not a stable `x.y.z` version, whose commit is not on `stable_branch` (default `master`), or whose built plugin version does not match the tag.
+- Fixed: `deploy-free.yml` checks out the release validation helper from this reusable workflow's commit (`job.workflow_sha`) instead of the caller plugin's SHA.
 
 [3.4.0] - 08 July, 2026
 

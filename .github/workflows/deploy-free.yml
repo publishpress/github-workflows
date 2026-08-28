@@ -61,12 +61,14 @@ jobs:
         run: composer deploy:metadata-github-output
 
       - name: Checkout release validation helper
-        # Same SHA as this reusable workflow so callers of @v3 get matching helpers.
+        # job.workflow_sha is this reusable workflow's commit. github.workflow_sha
+        # is the caller plugin SHA and is not present in this repository.
+        # https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context
         # actions/checkout@v6.0.2
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          repository: publishpress/github-workflows
-          ref: ${{ github.workflow_sha || 'v3' }}
+          repository: ${{ job.workflow_repository || 'publishpress/github-workflows' }}
+          ref: ${{ job.workflow_sha || 'v3' }}
           path: .pp-github-workflows
           persist-credentials: false
           sparse-checkout: |
