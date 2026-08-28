@@ -30,11 +30,15 @@ if [[ -z "$BUILT_VERSION" ]]; then
     fail "BUILT_VERSION is required"
 fi
 
-if [[ ! "$RELEASE_TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    fail "Release tag '${RELEASE_TAG}' must be a stable x.y.z version"
+# GitHub tags are often vX.Y.Z; the WordPress Version header is X.Y.Z.
+STABLE_VERSION="${RELEASE_TAG#v}"
+STABLE_VERSION="${STABLE_VERSION#V}"
+
+if [[ ! "$STABLE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    fail "Release tag '${RELEASE_TAG}' must be a stable x.y.z version (optional v prefix)"
 fi
 
-if [[ "$BUILT_VERSION" != "$RELEASE_TAG" ]]; then
+if [[ "$BUILT_VERSION" != "$STABLE_VERSION" ]]; then
     fail "Built plugin version '${BUILT_VERSION}' does not match release tag '${RELEASE_TAG}'"
 fi
 
