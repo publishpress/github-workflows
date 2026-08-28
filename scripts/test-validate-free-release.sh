@@ -79,6 +79,13 @@ expect_fail "prerelease tag is rejected" \
     STABLE_BRANCH="master" \
     REPO_ROOT="$REPO"
 
+expect_fail "v-prefixed prerelease tag is rejected" \
+    run_validate \
+    RELEASE_TAG="v4.10.4-beta.2" \
+    BUILT_VERSION="4.10.4-beta.2" \
+    STABLE_BRANCH="master" \
+    REPO_ROOT="$REPO"
+
 # Version mismatch modeled on issue #1697.
 git -C "$REPO" checkout -q "$DEV_SHA"
 expect_fail "tag 4.10.4 with built 4.10.4-beta.2 is rejected" \
@@ -101,6 +108,14 @@ git -C "$REPO" checkout -q "$MASTER_SHA"
 expect_pass "stable tag on master with matching version" \
     run_validate \
     RELEASE_TAG="4.10.5" \
+    BUILT_VERSION="4.10.5" \
+    STABLE_BRANCH="master" \
+    REPO_ROOT="$REPO"
+
+# Revisions and other plugins tag GitHub releases as vX.Y.Z.
+expect_pass "v-prefixed stable tag matches unprefixed plugin version" \
+    run_validate \
+    RELEASE_TAG="v4.10.5" \
     BUILT_VERSION="4.10.5" \
     STABLE_BRANCH="master" \
     REPO_ROOT="$REPO"

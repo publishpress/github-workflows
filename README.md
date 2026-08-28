@@ -136,9 +136,9 @@ Required repository secrets for WordPress.org deploy:
 
 The workflow fails before uploading to GitHub or WordPress.org unless all of the following are true:
 
-- The GitHub release tag is a stable `x.y.z` version (no `-beta` / `-rc` / `-alpha` suffix)
+- The GitHub release tag is a stable `x.y.z` or `vx.y.z` version (no `-beta` / `-rc` / `-alpha` suffix)
 - The tagged commit is contained in `stable_branch` (`master` by default)
-- The built plugin `Version` header equals the release tag
+- The built plugin `Version` header equals the release tag without a leading `v`
 
 Optional `workflow_call` input:
 
