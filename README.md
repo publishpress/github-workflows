@@ -119,7 +119,7 @@ name: Classify issue types
 
 on:
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 5 * * *"
   workflow_dispatch:
     inputs:
       dry_run:
