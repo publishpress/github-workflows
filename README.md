@@ -8,6 +8,7 @@ Reusable GitHub Actions workflows for PublishPress plugin repositories.
 - `.github/workflows/code-standards.yml`: Runs PHP compatibility and lint checks.
 - `.github/workflows/code-complexity.yml`: Runs PHP code complexity analysis with PHPMD.
 - `.github/workflows/dependabot-triage.yml`: Auto-dismisses low-risk development-scope Dependabot alerts.
+- `.github/workflows/issue-types.yml`: Uses JEV to set an issue type on open issues that have none.
 - `.github/workflows/deploy-free.yml`: Builds and deploys free plugin releases to WordPress.org and uploads release assets to GitHub.
 - `.github/workflows/deploy-free-assets.yml`: Updates WordPress.org plugin assets/readme.
 - `.github/workflows/deploy-pro.yml`: Builds pro plugin packages and uploads release assets to GitHub.
@@ -108,6 +109,39 @@ jobs:
 The weekly schedule runs on Mondays at 00:00 UTC. Use the manual `workflow_dispatch` trigger with `dry_run: true` to verify which alerts would be dismissed before running it for real.
 
 The workflow uses the caller repository's `DEPENDABOT_ALERTS_TOKEN` secret when it is available, then falls back to `GITHUB_TOKEN`. For centralized token management, add `DEPENDABOT_ALERTS_TOKEN` as an organization secret and allow access to the plugin repositories that should use this workflow. The token must have Dependabot alerts read/write access.
+
+### Issue types example
+
+Each caller repository owns the schedule. The reusable workflow classifies open issues that have no type and leaves pull requests, typed issues, and closed issues alone. It reads the repository's enabled issue types and asks JEV (`jev-latest`) to pick one. A type is applied only when confidence is at least `min_confidence` (default `0.8`). Each run classifies the oldest untyped issues, up to `max_issues` (default `50`).
+
+```yaml
+name: Classify issue types
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Log chosen types without applying them
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  issue_types:
+    name: Apply issue types
+    uses: publishpress/github-workflows/.github/workflows/issue-types.yml@<commit-sha>
+    with:
+      dry_run: ${{ inputs.dry_run || false }}
+    secrets: inherit
+```
+
+Create an organization secret named `TYPESAFE_API_KEY` and grant it to the repositories that call this workflow. `secrets: inherit` passes that secret into the reusable workflow.
 
 ### Deploy free plugin example
 
