@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+
+- Added: `issue-types.yml` classifies open issues that have no type with JEV and applies the chosen organization issue type.
+
 [3.4.2] - 28 August, 2026
 
 - Fixed: `deploy-free.yml` accepts GitHub release tags with an optional `v` prefix (`v4.0.0` matches plugin version `4.0.0`).
