@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[3.5.0] - 30 September, 2026
 
 - Added: `issue-types.yml` classifies open issues that have no type with JEV and applies the chosen organization issue type.
 
