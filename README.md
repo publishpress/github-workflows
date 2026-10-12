@@ -13,6 +13,7 @@ Reusable GitHub Actions workflows for PublishPress plugin repositories.
 - `.github/workflows/deploy-free-assets.yml`: Updates WordPress.org plugin assets/readme.
 - `.github/workflows/deploy-pro.yml`: Builds pro plugin packages and uploads release assets to GitHub.
 - `.github/workflows/sync-changelog.yml`: Notifies a WordPress changelog bridge endpoint after a release is published.
+- `.github/workflows/build-zip.yml`: Builds the plugin zip from any branch, tag, commit, or pull request and attaches it to the run, for hotfix builds.
 
 ## Usage
 
@@ -241,3 +242,76 @@ Supported repository or organization secrets:
 - `CHANGELOG_SYNC_SECRET_STAGING`: Shared HMAC secret configured on the staging WordPress site.
 - `CHANGELOG_SYNC_URL_PRODUCTION`: Production WordPress REST endpoint, for example `https://example.com/wp-json/publishpress-changelog/v1/sync`.
 - `CHANGELOG_SYNC_SECRET_PRODUCTION`: Shared HMAC secret configured on the production WordPress site.
+
+### Build plugin zip
+
+Use this to hand a customer a hotfix build from a pull request without building it locally. It runs `composer build` (the dev-workspace package, or the older in-repository `dev-workspace/` folder, detected automatically), renames the zip to `<plugin>-<version>-<ref>-<sha>.zip`, and uploads it as the run's artifact without an extra zip layer. The folder inside the zip is unchanged, so it installs over the existing plugin.
+
+Free plugin:
+
+```yaml
+name: Build plugin zip
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Pull request number, branch, tag, or commit SHA to build. Leave empty to build the branch selected above.
+        required: false
+        type: string
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  build_zip:
+    uses: publishpress/github-workflows/.github/workflows/build-zip.yml@<commit-sha>
+    with:
+      ref: ${{ inputs.ref }}
+```
+
+Pro plugin, which can also bundle an unreleased free plugin branch in place of the version in `lib/composer.lock`:
+
+```yaml
+name: Build plugin zip
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Pull request number, branch, tag, or commit SHA to build. Leave empty to build the branch selected above.
+        required: false
+        type: string
+      free_ref:
+        description: Optional. Free plugin branch or pull request number to bundle instead of the version in lib/composer.lock.
+        required: false
+        type: string
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  build_zip:
+    uses: publishpress/github-workflows/.github/workflows/build-zip.yml@<commit-sha>
+    with:
+      ref: ${{ inputs.ref }}
+      free-package: publishpress/publishpress-checklists
+      free-ref: ${{ inputs.free_ref }}
+```
+
+Adding the `build-zip` label to a pull request builds its head commit. On other `pull_request` events the job is skipped.
+
+Optional `workflow_call` inputs:
+
+- `ref`: pull request number, branch, tag, or commit SHA (default: the ref the caller ran on)
+- `php-version`: PHP version for the root `composer install` (default `8.3`)
+- `free-package`: Composer package of the bundled free plugin (Pro plugins)
+- `free-repo`: GitHub repository of the free plugin, when it differs from `free-package`
+- `free-ref`: free plugin branch or pull request number to bundle
+- `retention-days`: days to keep the artifact (default `14`)
+
+No secrets are needed. A free pull request from a fork cannot be bundled, because Composer only sees branches in the free plugin's repository.

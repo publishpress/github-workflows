@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+
+- Added: `build-zip.yml` builds the plugin zip from any branch, tag, commit, or pull request (on demand or with the `build-zip` label) and uploads it as a run artifact. Pro plugins can bundle a free plugin branch or pull request.
+
 [3.5.0] - 30 September, 2026
 
 - Added: `issue-types.yml` classifies open issues that have no type with JEV and applies the chosen organization issue type.
