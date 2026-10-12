@@ -1,0 +1,230 @@
+name: Build plugin zip
+permissions:
+  contents: read
+
+# Builds the installable plugin zip (dev-workspace `pack:zip`) from any branch, tag,
+# commit, or pull request of the calling plugin, and attaches it to the run as
+# a downloadable artifact. Support uses it to hand a customer a hotfix build
+# without checking the branch out locally.
+#
+# The caller decides when it runs (usually `workflow_dispatch` plus the
+# `build-zip` pull request label). On a `pull_request` event the job only runs
+# when the label that triggered it is `build-zip`.
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Pull request number, branch, tag, or commit SHA to build. Empty builds the ref the caller ran on.
+        required: false
+        type: string
+        default: ''
+      php-version:
+        description: PHP version used for the root `composer install`. The plugin itself is built in the dev-workspace Docker image.
+        required: false
+        type: string
+        default: '8.3'
+      free-package:
+        description: Pro plugins only. Composer package of the free plugin bundled in `lib/` (for example `publishpress/publishpress-checklists`).
+        required: false
+        type: string
+        default: ''
+      free-repo:
+        description: Pro plugins only. GitHub repository of the free plugin. Defaults to `free-package`.
+        required: false
+        type: string
+        default: ''
+      free-ref:
+        description: Pro plugins only. Free plugin branch or pull request number to bundle instead of the version in `lib/composer.lock`.
+        required: false
+        type: string
+        default: ''
+      retention-days:
+        description: Days to keep the zip artifact.
+        required: false
+        type: number
+        default: 14
+
+env:
+  DEV_SCRIPTS_DIR: ${{ github.workspace }}/vendor/publishpress/dev-workspace/scripts
+
+jobs:
+  build-zip:
+    name: Build the plugin zip
+    if: github.event_name != 'pull_request' || github.event.label.name == 'build-zip'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: build-zip-${{ github.repository }}-${{ github.event.pull_request.number || inputs.ref || github.ref }}-${{ inputs.free-ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Resolve the ref to build
+        id: target
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          ref="${INPUT_REF//[[:space:]]/}"
+          ref="${ref#\#}"
+          if [ -n "$PR_NUMBER" ]; then
+            checkout_ref="$PR_HEAD_SHA"
+            label="pr${PR_NUMBER}"
+          elif [ -z "$ref" ]; then
+            checkout_ref="$GITHUB_REF"
+            label="${GITHUB_REF_NAME}"
+          elif [[ "$ref" =~ ^[0-9]+$ ]]; then
+            checkout_ref="refs/pull/${ref}/head"
+            label="pr${ref}"
+          else
+            checkout_ref="$ref"
+            label="$ref"
+          fi
+          label="$(printf '%s' "$label" | tr -c 'A-Za-z0-9._-' '-')"
+          echo "checkout-ref=$checkout_ref" >> "$GITHUB_OUTPUT"
+          echo "label=$label" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        # actions/checkout@v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ steps.target.outputs.checkout-ref }}
+          persist-credentials: false
+
+      - name: Set up PHP
+        # shivammathur/setup-php@2.37.0
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f
+        with:
+          php-version: ${{ inputs.php-version }}
+          extensions: mbstring,xml,curl,zip,intl,bcmath,gettext,mysqli,phar,gd,iconv,yaml
+          tools: composer:v2
+
+      - name: Create root .env file
+        run: cp "$GITHUB_WORKSPACE/.env.example" "$GITHUB_WORKSPACE/.env"
+
+      - name: Detect the dev-workspace setup
+        id: setup
+        run: |
+          if jq -e '."require-dev"["publishpress/dev-workspace"]' composer.json > /dev/null; then
+            echo "mode=package" >> "$GITHUB_OUTPUT"
+          elif [ -f dev-workspace/run ]; then
+            # Older plugins keep dev-workspace in the repository and run Composer inside its Docker image.
+            chmod +x dev-workspace/run dev-workspace/scripts/*.sh
+            echo "mode=legacy" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::No dev-workspace found: composer.json has no publishpress/dev-workspace and there is no dev-workspace/run."
+            exit 1
+          fi
+
+      - name: Install Composer dependencies
+        if: steps.setup.outputs.mode == 'package'
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Bundle a free plugin branch
+        id: free
+        if: inputs.free-ref != ''
+        env:
+          FREE_REF: ${{ inputs.free-ref }}
+          FREE_PACKAGE: ${{ inputs.free-package }}
+          FREE_REPO: ${{ inputs.free-repo || inputs.free-package }}
+          GH_TOKEN: ${{ github.token }}
+          COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ github.token }}"}}'
+        run: |
+          if [ -z "$FREE_PACKAGE" ]; then
+            echo "::error::free-ref was given, but this plugin's workflow does not set free-package."
+            exit 1
+          fi
+          ref="${FREE_REF//[[:space:]]/}"
+          ref="${ref#\#}"
+          if [[ "$ref" =~ ^[0-9]+$ ]]; then
+            if [ "$(gh pr view "$ref" --repo "$FREE_REPO" --json isCrossRepository --jq .isCrossRepository)" = "true" ]; then
+              echo "::error::Free pull request #${ref} comes from a fork, so Composer cannot install it. Use a branch in ${FREE_REPO}."
+              exit 1
+            fi
+            branch="$(gh pr view "$ref" --repo "$FREE_REPO" --json headRefName --jq .headRefName)"
+            label="free-pr${ref}"
+          else
+            branch="$ref"
+            label="free-${ref}"
+          fi
+          composer require "${FREE_PACKAGE}:dev-${branch}" \
+            --working-dir=lib --no-interaction --no-progress
+          free_sha="$(jq -r --arg name "$FREE_PACKAGE" '.packages[] | select(.name == $name) | .source.reference' lib/composer.lock)"
+          label="$(printf '%s' "$label" | tr -c 'A-Za-z0-9._-' '-')"
+          echo "label=-${label}" >> "$GITHUB_OUTPUT"
+          echo "branch=${branch}" >> "$GITHUB_OUTPUT"
+          echo "sha=${free_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Add dev-workspace scripts to PATH
+        if: steps.setup.outputs.mode == 'package'
+        run: echo "$DEV_SCRIPTS_DIR" >> "$GITHUB_PATH"
+
+      - name: Build plugin package
+        if: steps.setup.outputs.mode == 'package'
+        # `composer build` first runs the stable-release gate, which fails when the version is already
+        # on wordpress.org or the changelog is not bumped yet. A hotfix build of a branch needs neither.
+        run: composer pack:zip
+
+      - name: Build plugin package (in-repository dev-workspace)
+        if: steps.setup.outputs.mode == 'legacy'
+        run: |
+          dev-workspace/run composer install --no-interaction --prefer-dist --no-progress
+          dev-workspace/run composer build
+
+      - name: Name the zip after the ref
+        id: package
+        env:
+          LABEL: ${{ steps.target.outputs.label }}${{ steps.free.outputs.label }}
+        run: |
+          shopt -s nullglob
+          mkdir -p "$RUNNER_TEMP/package"
+          zips=(dist/*.zip)
+          short_sha="$(git rev-parse --short HEAD)"
+          if [ "${#zips[@]}" -eq 1 ]; then
+            base="$(basename "${zips[0]}" .zip)"
+            zip_name="${base}-${LABEL}-${short_sha}.zip"
+            cp "${zips[0]}" "$RUNNER_TEMP/package/${zip_name}"
+          elif [ "${#zips[@]}" -eq 0 ] && folder="$(jq -r '.extra["plugin-folder"] // empty' composer.json)" && [ -n "$folder" ] && [ -d "dist/${folder}" ]; then
+            # The build left only the plugin folder, so zip it here.
+            name="$(jq -r '.extra["plugin-name"] // empty' composer.json)"
+            version="$(grep -h -m1 -E '^[[:space:]*#@]*Version:' "dist/${folder}"/*.php | head -1 | sed -E 's/.*Version:[[:space:]]*//; s/[[:space:]]*$//')"
+            zip_name="${name:-$folder}${version:+-$version}-${LABEL}-${short_sha}.zip"
+            (cd dist && zip -qr "$RUNNER_TEMP/package/${zip_name}" "$folder")
+          else
+            echo "::error::Expected one zip or the plugin folder in dist/, found ${#zips[@]} zips."
+            ls -la dist || true
+            exit 1
+          fi
+          echo "path=$RUNNER_TEMP/package/${zip_name}" >> "$GITHUB_OUTPUT"
+          echo "zip-name=${zip_name}" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the zip
+        id: upload
+        # actions/upload-artifact@v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          path: ${{ steps.package.outputs.path }}
+          archive: false
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention-days }}
+
+      - name: Summarize the build
+        env:
+          ZIP_NAME: ${{ steps.package.outputs.zip-name }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          BUILT_SHA: ${{ steps.package.outputs.sha }}
+          CHECKOUT_REF: ${{ steps.target.outputs.checkout-ref }}
+          FREE_BRANCH: ${{ steps.free.outputs.branch }}
+          FREE_SHA: ${{ steps.free.outputs.sha }}
+        run: |
+          {
+            echo "### Plugin zip ready"
+            echo ""
+            echo "Download: [${ZIP_NAME}](${ARTIFACT_URL})"
+            echo ""
+            echo "Built from \`${CHECKOUT_REF}\` at commit \`${BUILT_SHA}\`."
+            if [ -n "$FREE_BRANCH" ]; then
+              echo ""
+              echo "Bundles the free plugin from branch \`${FREE_BRANCH}\` at commit \`${FREE_SHA}\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
