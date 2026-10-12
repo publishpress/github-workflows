@@ -245,7 +245,7 @@ Supported repository or organization secrets:
 
 ### Build plugin zip
 
-Use this to hand a customer a hotfix build from a pull request without building it locally. It runs `composer build` (the dev-workspace package, or the older in-repository `dev-workspace/` folder, detected automatically), renames the zip to `<plugin>-<version>-<ref>-<sha>.zip`, and uploads it as the run's artifact without an extra zip layer. The folder inside the zip is unchanged, so it installs over the existing plugin.
+Use this to hand a customer a hotfix build from a pull request without building it locally. It packs the plugin with dev-workspace (the package, or the older in-repository `dev-workspace/` folder, detected automatically) and skips the stable-release gate that `composer build` runs first, since a hotfix build often reuses a version already on wordpress.org. It then renames the zip to `<plugin>-<version>-<ref>-<sha>.zip`, and uploads it as the run's artifact without an extra zip layer. The folder inside the zip is unchanged, so it installs over the existing plugin.
 
 Free plugin:
 

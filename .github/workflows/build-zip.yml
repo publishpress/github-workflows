@@ -2,7 +2,7 @@ name: Build plugin zip
 permissions:
   contents: read
 
-# Builds the installable plugin zip (`composer build`) from any branch, tag,
+# Builds the installable plugin zip (dev-workspace `pack:zip`) from any branch, tag,
 # commit, or pull request of the calling plugin, and attaches it to the run as
 # a downloadable artifact. Support uses it to hand a customer a hotfix build
 # without checking the branch out locally.
@@ -160,7 +160,9 @@ jobs:
 
       - name: Build plugin package
         if: steps.setup.outputs.mode == 'package'
-        run: composer build
+        # `composer build` first runs the stable-release gate, which fails when the version is already
+        # on wordpress.org or the changelog is not bumped yet. A hotfix build of a branch needs neither.
+        run: composer pack:zip
 
       - name: Build plugin package (in-repository dev-workspace)
         if: steps.setup.outputs.mode == 'legacy'
