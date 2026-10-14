@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+- Added: `language-pack.yml` builds one `{text-domain}-locales.zip` (`.po`, `.mo`, and `.json` for every locale) and uploads it to the plugin release. There is no GitHub release per locale.
+
 [3.6.0] - 12 October, 2026
 
 - Added: `build-zip.yml` builds an installable plugin zip from any branch, tag, commit, or pull request and uploads it as a workflow artifact.
