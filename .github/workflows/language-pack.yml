@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       text_domain:
-        description: Text domain used in languages/{text-domain}-{locale}.mo and .json
+        description: Text domain used in languages/{text-domain}-{locale}.po, .mo, and .json
         required: true
         type: string
     secrets:
@@ -50,9 +50,15 @@ jobs:
           for mo in languages/${domain}-*.mo; do
             locale="${mo#languages/${domain}-}"
             locale="${locale%.mo}"
+            po="languages/${domain}-${locale}.po"
             json="languages/${domain}-${locale}.json"
             if [[ ! "$locale" =~ ^[A-Za-z0-9_]+$ ]]; then
               echo "Skipping unrecognized locale file ${mo}. Its last published pack stays in place."
+              failed=1
+              continue
+            fi
+            if [ ! -f "$po" ]; then
+              echo "No PO for ${locale}. Its last published pack stays in place."
               failed=1
               continue
             fi
@@ -70,7 +76,7 @@ jobs:
 
             tag="v0.0.0-$(printf '%s' "$locale" | tr '[:upper:]_' '[:lower:]-')"
             zipfile="${domain}-${locale}.zip"
-            if ! zip -j "$zipfile" "$mo" "$json"; then
+            if ! zip -j "$zipfile" "$po" "$mo" "$json"; then
               echo "Zip failed for ${locale}. Its last published pack stays in place."
               failed=1
               continue
