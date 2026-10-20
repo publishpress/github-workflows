@@ -64,6 +64,5 @@ jobs:
           sudo chown -R $(id -u):$(id -g) $GITHUB_WORKSPACE/dev-workspace-cache
           sudo chmod -R 777 $GITHUB_WORKSPACE/dev-workspace-cache
 
-
       - name: Run integration tests
-        run: composer test Integration
+        run: composer test:integration
