@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.7.1] - 20 October, 2026
+
+- Fixed: Fixed unit and integration tests commands in the workflows.
+
 [3.7.0] - 20 October, 2026
 
 - Added: `language-pack.yml` builds one `{text-domain}-locales.zip` (`.po`, `.mo`, and `.json` for every locale) and uploads it to the plugin release. There is no GitHub release per locale.
