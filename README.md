@@ -195,8 +195,23 @@ permissions:
 jobs:
   deploy_pro:
     uses: publishpress/github-workflows/.github/workflows/deploy-pro.yml@<commit-sha>
+    with:
+      sign_package: true
+      package_signing_key_id: publishpress-2026
     secrets: inherit
 ```
+
+Signed releases require the organization secret `PACKAGE_SIGNING_PRIVATE_KEY` to contain an Ed25519 private key. The workflow signs the exact ZIP bytes and uploads a sibling `<zip-name>.sig` JSON asset containing the detached signature and key ID. Keep `sign_package` disabled until Package Server has the matching public key and the repository is enrolled.
+
+Generate the key once on a secured workstation, store the private PEM as the organization secret, and configure Package Server and Hub with the raw public key:
+
+```bash
+openssl genpkey -algorithm ED25519 -out package-signing-private.pem
+openssl pkey -in package-signing-private.pem -pubout -outform DER | tail -c 32 | openssl base64 -A
+gh secret set PACKAGE_SIGNING_PRIVATE_KEY --org ORGANIZATION < package-signing-private.pem
+```
+
+Do not commit `package-signing-private.pem`. The command prints the base64 public key that can be stored with the same `package_signing_key_id` in Package Server and Hub.
 
 ### Deploy free plugin assets example
 
