@@ -1,0 +1,135 @@
+name: Build signed pre-release artifacts
+permissions:
+  contents: read
+  pull-requests: read
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Same-repository branch, tag, commit SHA, or pull request number.
+        type: string
+        default: ''
+      skip_translations:
+        description: Use the translation catalogs already committed in the repository.
+        type: boolean
+        default: true
+      skip_release_checks:
+        description: Skip stable release checks for this unpublished test build.
+        type: boolean
+        default: true
+    secrets:
+      PLUGIN_ZIP_ED25519_PRIVATE_KEY:
+        required: true
+
+jobs:
+  build-prerelease:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Resolve build ref
+        id: target
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ref="${INPUT_REF:-$GITHUB_REF}"
+          ref="${ref#\#}"
+          if [[ "$ref" =~ ^[0-9]+$ ]]; then
+            if [[ "$(gh pr view "$ref" --repo "$GITHUB_REPOSITORY" --json isCrossRepository --jq .isCrossRepository)" == true ]]; then
+              echo '::error::Signing pull requests from forks is not permitted.'
+              exit 1
+            fi
+            ref="$(gh pr view "$ref" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq .headRefOid)"
+          elif [[ "$ref" == refs/pull/* ]]; then
+            echo '::error::Use a pull request number so fork access can be checked.'
+            exit 1
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ steps.target.outputs.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f
+        with:
+          php-version: '8.3'
+          extensions: mbstring,xml,curl,zip,intl,bcmath,gettext,mysqli,phar,gd,iconv,yaml
+          tools: composer:v2
+
+      - name: Configure test build
+        env:
+          SKIP_RELEASE_CHECKS: ${{ inputs.skip_release_checks }}
+        run: |
+          cp .env.example .env
+          if [[ "$SKIP_RELEASE_CHECKS" == true ]]; then
+            printf '\nPP_SKIP_RELEASE_CHECK=1\n' >> .env
+          fi
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Compile translations
+        if: ${{ !inputs.skip_translations }}
+        run: composer translate:compile
+
+      - name: Build plugin package
+        env:
+          PP_SKIP_RELEASE_CHECK: ${{ inputs.skip_release_checks && '1' || '0' }}
+        run: composer build
+
+      - name: Resolve package
+        id: package
+        shell: bash
+        run: |
+          shopt -s nullglob
+          zips=("$GITHUB_WORKSPACE"/dist/*.zip)
+          if [[ ${#zips[@]} != 1 || ! -s "${zips[0]}" ]]; then
+            echo '::error::Expected exactly one non-empty ZIP in dist/.'
+            exit 1
+          fi
+          echo "path=${zips[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Sign package
+        id: signature
+        uses: publishpress/github-workflows/.github/actions/sign-package@v3
+        with:
+          private-key: ${{ secrets.PLUGIN_ZIP_ED25519_PRIVATE_KEY }}
+          package-path: ${{ steps.package.outputs.path }}
+
+      - name: Upload signed test artifacts
+        id: artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: signed-prerelease-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          path: |
+            ${{ steps.package.outputs.path }}
+            ${{ steps.signature.outputs.path }}
+
+      - name: Summarize test build
+        env:
+          PACKAGE_PATH: ${{ steps.package.outputs.path }}
+          PUBLIC_KEY: ${{ steps.signature.outputs.public-key }}
+          ARTIFACT_URL: ${{ steps.artifacts.outputs.artifact-url }}
+        run: |
+          name="$(basename "$PACKAGE_PATH")"
+          {
+            echo '## Signed Pre-Release Build'
+            echo
+            echo "[Download ZIP and signature]($ARTIFACT_URL)"
+            echo
+            echo "Commit: $(git rev-parse HEAD)"
+            echo
+            echo 'No tag, release, WordPress.org deployment, or Package Server upload was created.'
+            echo
+            echo 'Verify the downloaded ZIP locally:'
+            echo '```bash'
+            printf "printf '%%s' '%s' | openssl base64 -d -A | openssl pkey -pubin -inform DER -out public.pem\n" "$PUBLIC_KEY"
+            printf "awk '{print \0443}' '%s.sig' | openssl base64 -d -A > signature.bin\n" "$name"
+            printf "openssl pkeyutl -verify -rawin -pubin -inkey public.pem -in '%s' -sigfile signature.bin\n" "$name"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
