@@ -1,0 +1,31 @@
+name: Sign plugin ZIP
+description: Sign exact ZIP bytes on the runner with the organization's Ed25519 key.
+inputs:
+  package-path:
+    required: true
+    description: ZIP file to sign.
+  private-key:
+    required: true
+    description: PKCS8 PEM Ed25519 private key from Actions secrets.
+  key-id:
+    required: false
+    default: ''
+    description: Defaults to the pinned key for the repository organization.
+outputs:
+  path:
+    value: ${{ steps.sign.outputs.path }}
+    description: Detached signature asset path.
+  public-key:
+    value: ${{ steps.sign.outputs.public-key }}
+    description: Base64 SPKI public key for manual verification.
+runs:
+  using: composite
+  steps:
+    - id: sign
+      shell: bash
+      env:
+        PRIVATE_KEY: ${{ inputs.private-key }}
+        KEY_ID: ${{ inputs.key-id }}
+        PACKAGE_PATH: ${{ inputs.package-path }}
+        SIGNING_SCRIPT: ${{ github.action_path }}/sign.sh
+      run: bash "$SIGNING_SCRIPT"

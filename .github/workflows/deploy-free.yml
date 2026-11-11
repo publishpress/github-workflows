@@ -10,6 +10,8 @@ on:
         type: string
         default: master
     secrets:
+      PLUGIN_ZIP_ED25519_PRIVATE_KEY:
+        required: true
       SVN_USERNAME:
         required: true
       SVN_PASSWORD:
@@ -20,6 +22,7 @@ env:
 
 jobs:
   deploy-wp-org:
+    if: github.event_name != 'release' || (github.event.release.draft == false && github.event.release.prerelease == false)
     name: Deploy the tagged release to WordPress.org
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -61,14 +64,11 @@ jobs:
         run: composer deploy:metadata-github-output
 
       - name: Checkout release validation helper
-        # job.workflow_sha is this reusable workflow's commit. github.workflow_sha
-        # is the caller plugin SHA and is not present in this repository.
-        # https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#job-context
         # actions/checkout@v6.0.2
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          repository: ${{ job.workflow_repository || 'publishpress/github-workflows' }}
-          ref: ${{ job.workflow_sha || 'v3' }}
+          repository: publishpress/github-workflows
+          ref: v3
           path: .pp-github-workflows
           persist-credentials: false
           sparse-checkout: |
@@ -83,11 +83,24 @@ jobs:
           REPO_ROOT: ${{ github.workspace }}
         run: bash "${{ github.workspace }}/.pp-github-workflows/.github/actions/validate-free-release/validate.sh"
 
-      - name: Upload GitHub release asset
-        # softprops/action-gh-release@v3.0.0
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
+      - name: Sign package
+        id: signature
+        uses: publishpress/github-workflows/.github/actions/sign-package@v3
         with:
-          files: ${{ github.workspace }}/dist/${{ steps.get-metadata.outputs.plugin-name }}-${{ steps.get-metadata.outputs.plugin-version }}.zip
+          private-key: ${{ secrets.PLUGIN_ZIP_ED25519_PRIVATE_KEY }}
+          package-path: ${{ github.workspace }}/dist/${{ steps.get-metadata.outputs.plugin-name }}-${{ steps.get-metadata.outputs.plugin-version }}.zip
+
+      - name: Upload signed GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          PACKAGE_PATH: ${{ github.workspace }}/dist/${{ steps.get-metadata.outputs.plugin-name }}-${{ steps.get-metadata.outputs.plugin-version }}.zip
+          SIGNATURE_PATH: ${{ steps.signature.outputs.path }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" "$PACKAGE_PATH" "$SIGNATURE_PATH" --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: Deploy plugin to WordPress.org
         # 10up/action-wordpress-plugin-deploy@v2.3.0
