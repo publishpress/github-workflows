@@ -8,25 +8,35 @@ on:
         description: Sign the release ZIP with the configured Ed25519 private key.
         required: false
         type: boolean
-        default: false
+        default: true
       package_signing_key_id:
         description: Public key identifier written to the detached signature asset.
         required: false
         type: string
         default: ''
     secrets:
-      PACKAGE_SIGNING_PRIVATE_KEY:
-        required: false
+      PLUGIN_ZIP_ED25519_PRIVATE_KEY:
+        required: true
 
 env:
   DEV_SCRIPTS_DIR: ${{ github.workspace }}/vendor/publishpress/dev-workspace/scripts
 
 jobs:
   deploy-pro:
+    if: github.event_name != 'release' || (github.event.release.draft == false && github.event.release.prerelease == false)
     name: Build and attach the tagged release
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Require signed stable release
+        env:
+          SIGN_PACKAGE: ${{ inputs.sign_package }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          if [[ "$SIGN_PACKAGE" != true || ! "$RELEASE_TAG" =~ ^v?-?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo '::error::Stable release builds must be signed and use a stable version tag.'
+            exit 1
+          fi
       - name: Checkout repository
         # actions/checkout@v6.0.2
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -66,7 +76,14 @@ jobs:
         env:
           PLUGIN_NAME: ${{ steps.get-metadata.outputs.plugin-name }}
           PLUGIN_VERSION: ${{ steps.get-metadata.outputs.plugin-version }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
+          version="${RELEASE_TAG#v}"
+          version="${version#-}"
+          if [[ "$PLUGIN_VERSION" != "$version" ]]; then
+            echo '::error::The built plugin version must match the release tag.'
+            exit 1
+          fi
           package="$GITHUB_WORKSPACE/dist/${PLUGIN_NAME}-${PLUGIN_VERSION}.zip"
           if [ ! -s "$package" ]; then
             echo "::error::Built package not found or empty: $package"
@@ -75,46 +92,21 @@ jobs:
           echo "path=$package" >> "$GITHUB_OUTPUT"
 
       - name: Sign package
-        if: inputs.sign_package
         id: signature
-        env:
-          PRIVATE_KEY: ${{ secrets.PACKAGE_SIGNING_PRIVATE_KEY }}
-          KEY_ID: ${{ inputs.package_signing_key_id }}
-          PACKAGE_PATH: ${{ steps.package.outputs.path }}
-        run: |
-          if [ -z "$PRIVATE_KEY" ] || [ -z "$KEY_ID" ]; then
-            echo "::error::Package signing requires PACKAGE_SIGNING_PRIVATE_KEY and package_signing_key_id."
-            exit 1
-          fi
-
-          key_file="$RUNNER_TEMP/package-signing-key.pem"
-          signature_file="${PACKAGE_PATH}.sig.bin"
-          signature_asset="${PACKAGE_PATH}.sig"
-          printf '%s' "$PRIVATE_KEY" > "$key_file"
-          chmod 600 "$key_file"
-          trap 'rm -f "$key_file" "$signature_file"' EXIT
-
-          openssl pkeyutl -sign -rawin -inkey "$key_file" -in "$PACKAGE_PATH" -out "$signature_file"
-          signature="$(base64 -w 0 "$signature_file")"
-          jq -n \
-            --arg keyId "$KEY_ID" \
-            --arg signature "$signature" \
-            '{version: 1, algorithm: "Ed25519", keyId: $keyId, signature: $signature}' \
-            > "$signature_asset"
-          echo "path=$signature_asset" >> "$GITHUB_OUTPUT"
-
-      - name: Upload unsigned GitHub release asset
-        if: ${{ !inputs.sign_package }}
-        # softprops/action-gh-release@v3.0.0
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
+        uses: publishpress/github-workflows/.github/actions/sign-package@v3
         with:
-          files: ${{ steps.package.outputs.path }}
+          private-key: ${{ secrets.PLUGIN_ZIP_ED25519_PRIVATE_KEY }}
+          key-id: ${{ inputs.package_signing_key_id }}
+          package-path: ${{ steps.package.outputs.path }}
 
       - name: Upload signed GitHub release assets
-        if: inputs.sign_package
-        # softprops/action-gh-release@v3.0.0
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda
-        with:
-          files: |
-            ${{ steps.package.outputs.path }}
-            ${{ steps.signature.outputs.path }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || github.ref_name }}
+          PACKAGE_PATH: ${{ steps.package.outputs.path }}
+          SIGNATURE_PATH: ${{ steps.signature.outputs.path }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" "$PACKAGE_PATH" "$SIGNATURE_PATH" --repo "$GITHUB_REPOSITORY" --clobber
