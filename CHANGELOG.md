@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[3.8.1] - 11 November, 2026
 
 - Security: Build and sign stable free and Pro ZIPs in CI using the organization Ed25519 key and the `v1 <key-id> <base64>` signature contract, #37, #88.
 - Added: Signed pre-release artifacts with optional translation and release-check skips, and a signature-only workflow for existing release bytes.
