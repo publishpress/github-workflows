@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.8.0] - 11 November, 2026
+
+- Added: `deploy-pro.yml` can sign the exact release ZIP with an Ed25519 organization key and upload a sibling detached `.sig` asset for Package Server verification, #77.
+
 [3.7.1] - 20 October, 2026
 
 - Fixed: Fixed unit and integration tests commands in the workflows.
