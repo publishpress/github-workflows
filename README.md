@@ -14,6 +14,10 @@ Reusable GitHub Actions workflows for PublishPress plugin repositories.
 - `.github/workflows/deploy-pro.yml`: Builds pro plugin packages and uploads release assets to GitHub.
 - `.github/workflows/sync-changelog.yml`: Notifies a WordPress changelog bridge endpoint after a release is published.
 - `.github/workflows/build-zip.yml`: Builds the plugin zip from any branch, tag, commit, or pull request and attaches it to the run, for hotfix builds.
+- `.github/workflows/build-prerelease.yml`: Builds and signs unpublished test ZIPs as Actions artifacts only.
+- `.github/workflows/sign-existing-release.yml`: Adds a signature to existing release ZIP bytes without rebuilding or replacing them.
+
+See [Signed Plugin Builds](docs-signing.md) for the signing secret, test-build inputs, and rollout requirements.
 
 ## Usage
 
@@ -168,6 +172,7 @@ Required repository secrets for WordPress.org deploy:
 
 - `SVN_USERNAME`
 - `SVN_PASSWORD`
+- `PLUGIN_ZIP_ED25519_PRIVATE_KEY` (organization or repository Actions secret)
 
 The workflow fails before uploading to GitHub or WordPress.org unless all of the following are true:
 
@@ -201,14 +206,14 @@ jobs:
     secrets: inherit
 ```
 
-Signed releases require the organization secret `PACKAGE_SIGNING_PRIVATE_KEY` to contain an Ed25519 private key. The workflow signs the exact ZIP bytes and uploads a sibling `<zip-name>.sig` JSON asset containing the detached signature and key ID. Keep `sign_package` disabled until Package Server has the matching public key and the repository is enrolled.
+Stable releases require the Actions secret `PLUGIN_ZIP_ED25519_PRIVATE_KEY` to contain the organization's PKCS8 PEM Ed25519 private key. Signing is mandatory. The sibling `<zip-name>.sig` contains `v1 <key-id> <base64>` followed by a newline. Worker and Hub enforcement remain disabled until repositories are separately enrolled; signing a release does not enable enforcement.
 
 Generate the key once on a secured workstation, store the private PEM as the organization secret, and configure Package Server and Hub with the raw public key:
 
 ```bash
 openssl genpkey -algorithm ED25519 -out package-signing-private.pem
 openssl pkey -in package-signing-private.pem -pubout -outform DER | tail -c 32 | openssl base64 -A
-gh secret set PACKAGE_SIGNING_PRIVATE_KEY --org ORGANIZATION < package-signing-private.pem
+gh secret set PLUGIN_ZIP_ED25519_PRIVATE_KEY --org ORGANIZATION < package-signing-private.pem
 ```
 
 Do not commit `package-signing-private.pem`. The command prints the base64 public key that can be stored with the same `package_signing_key_id` in Package Server and Hub.
@@ -330,3 +335,65 @@ Optional `workflow_call` inputs:
 - `retention-days`: days to keep the artifact (default `14`)
 
 No secrets are needed. A free pull request from a fork cannot be bundled, because Composer only sees branches in the free plugin's repository.
+
+
+### Signed pre-release build example
+
+Add this caller as `.github/workflows/build-prerelease.yml` in each plugin:
+
+```yaml
+name: Build signed pre-release artifacts
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag, commit SHA, or same-repository pull request number.
+        type: string
+        default: ''
+      skip_translations:
+        description: Use committed translation catalogs.
+        type: boolean
+        default: true
+      skip_release_checks:
+        description: Skip stable release checks for this unpublished test build.
+        type: boolean
+        default: true
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  build:
+    uses: publishpress/github-workflows/.github/workflows/build-prerelease.yml@v3
+    with:
+      ref: ${{ inputs.ref }}
+      skip_translations: ${{ inputs.skip_translations }}
+      skip_release_checks: ${{ inputs.skip_release_checks }}
+    secrets: inherit
+```
+
+This produces signed Actions artifacts only. It does not publish a release or deploy the plugin. The default skip options require a dev-workspace version supporting `PP_SKIP_RELEASE_CHECK=1`.
+
+### Sign an existing release example
+
+Add this caller as `.github/workflows/sign-existing-release.yml` in the plugin repository:
+
+```yaml
+name: Sign an existing release without rebuilding
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing stable release tag, for example v1.2.0.
+        required: true
+        type: string
+permissions:
+  contents: write
+jobs:
+  sign:
+    uses: publishpress/github-workflows/.github/workflows/sign-existing-release.yml@v3
+    with:
+      release_tag: ${{ inputs.release_tag }}
+    secrets: inherit
+```
+
+This uploads only the signature for the existing ZIP. It does not rebuild or replace the ZIP. Both workflows require `PLUGIN_ZIP_ED25519_PRIVATE_KEY`, passed through `secrets: inherit`.
