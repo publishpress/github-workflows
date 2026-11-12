@@ -14,7 +14,7 @@ The Pro workflow still accepts `sign_package` for existing callers, but it defau
 
 ## Signed Test Builds
 
-Use the [signed pre-release caller example](README.md#signed-pre-release-build-example) in the README.
+Use the [signed pre-release caller example](../../../README.md#signed-pre-release-build-example) in the README.
 
 Publish the dev-workspace release supporting `PP_SKIP_RELEASE_CHECK=1` and update plugin Composer lock files before running with skipped checks. Old locked versions do not recognize the flag.
 
@@ -26,7 +26,7 @@ The run uploads only the ZIP and `.sig` as Actions artifacts. Its summary links 
 
 `sign-existing-release.yml` accepts an exact `release_tag` or `all`. Bulk mode reads every release page and processes unsigned stable releases sequentially. It downloads the one non-empty versioned ZIP, checks its GitHub digest, signs it, and uploads only the `.sig`. It never rebuilds or replaces ZIPs or existing signatures. Package Server sync must then confirm these bytes match the immutable R2 object. Stop enrollment if they differ.
 
-Use the [existing-release signing caller example](README.md#sign-an-existing-release-example) in the README.
+Use the [existing-release signing caller example](../../../README.md#sign-an-existing-release-example) in the README.
 
 Open **Actions > Sign an existing release without rebuilding > Run workflow**, enter the exact tag or `all`, and confirm the matching `.sig` appears beside each unchanged ZIP on the release page. Existing plugin callers need no new inputs to use `all`.
 
