@@ -14,7 +14,7 @@ The Pro workflow still accepts `sign_package` for existing callers, but it defau
 
 ## Signed Test Builds
 
-Use the [signed pre-release caller example](README.md#signed-pre-release-build-example) in the README.
+Use the [signed pre-release caller example](../../../README.md#signed-pre-release-build-example) in the README.
 
 Publish the dev-workspace release supporting `PP_SKIP_RELEASE_CHECK=1` and update plugin Composer lock files before running with skipped checks. Old locked versions do not recognize the flag.
 
@@ -24,10 +24,14 @@ The run uploads only the ZIP and `.sig` as Actions artifacts. Its summary links 
 
 ## Existing Releases
 
-`sign-existing-release.yml` accepts `release_tag`, downloads the one non-empty versioned ZIP, checks its GitHub digest, signs it, and uploads only the `.sig`. It never rebuilds or replaces the ZIP. Package Server sync must then confirm these bytes match the immutable R2 object. Stop enrollment if they differ.
+`sign-existing-release.yml` accepts an exact `release_tag` or `all`. Bulk mode reads every release page and processes unsigned stable releases sequentially. It downloads the one non-empty versioned ZIP, checks its GitHub digest, signs it, and uploads only the `.sig`. It never rebuilds or replaces ZIPs or existing signatures. Package Server sync must then confirm these bytes match the immutable R2 object. Stop enrollment if they differ.
 
-Use the [existing-release signing caller example](README.md#sign-an-existing-release-example) in the README.
+Use the [existing-release signing caller example](../../../README.md#sign-an-existing-release-example) in the README.
 
-Open **Actions > Sign an existing release without rebuilding > Run workflow**, enter the exact tag, and confirm the matching `.sig` appears beside the unchanged ZIP on the release page.
+Open **Actions > Sign an existing release without rebuilding > Run workflow**, enter the exact tag or `all`, and confirm the matching `.sig` appears beside each unchanged ZIP on the release page. Existing plugin callers need no new inputs to use `all`.
+
+The run summary reports each release as signed, skipped, or failed and links to its release page. Signatures are under the release's **Assets**, not Actions artifacts. Drafts, pre-releases, non-stable tags, and releases with an existing signature are skipped. Missing or ambiguous versioned ZIPs and missing or invalid GitHub digests are failures. Processing continues after a failure, then the overall job fails. Rerun `all` to retry; completed releases are skipped. Each run is limited to 60 minutes; a later run can finish any remaining unsigned releases.
+
+Signature uploads modify existing GitHub release assets. Consider connected staging and production integrations before running a backfill. This workflow does not itself synchronize Package Server or change enforcement settings.
 
 `build-zip.yml` remains an unsigned support-hotfix workflow. Package Server and Hub enforcement are separate opt-in changes after signed assets and historical metadata are ready. Publish the signing action and workflows together before moving `v3` and updating callers.

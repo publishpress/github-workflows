@@ -1,58 +1,28 @@
-name: Sign an existing release without rebuilding
+name: Sign existing releases without rebuilding
 permissions:
   contents: write
 on:
   workflow_call:
     inputs:
       release_tag:
-        description: Existing stable release whose ZIP bytes must be preserved.
+        description: Exact stable release tag, or all to sign unsigned stable releases.
         required: true
         type: string
     secrets:
       PLUGIN_ZIP_ED25519_PRIVATE_KEY:
         required: true
+concurrency:
+  group: sign-existing-releases-${{ github.repository }}
+  cancel-in-progress: false
 jobs:
   sign-existing:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     steps:
-      - name: Download existing versioned ZIP
-        id: package
+      - name: Sign original release ZIPs and upload signatures
+        uses: publishpress/github-workflows/.github/actions/sign-existing-releases@v3
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-        run: |
-          if [[ ! "$RELEASE_TAG" =~ ^v?-?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo '::error::An existing stable release tag is required.'
-            exit 1
-          fi
-          version="${RELEASE_TAG#v}"
-          version="${version#-}"
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/release.json"
-          jq -e '.draft == false and .prerelease == false' "$RUNNER_TEMP/release.json" > /dev/null
-          candidates="$(jq --arg suffix "-${version}.zip" '[.assets[] | select((.name | endswith($suffix)) and .size > 0)]' "$RUNNER_TEMP/release.json")"
-          [[ "$(jq length <<< "$candidates")" == 1 ]]
-          name="$(jq -r '.[0].name' <<< "$candidates")"
-          [[ "$name" =~ ^[A-Za-z0-9._-]+\.zip$ ]]
-          id="$(jq -r '.[0].id' <<< "$candidates")"
-          digest="$(jq -r '.[0].digest' <<< "$candidates")"
-          [[ "$digest" =~ ^sha256:[a-fA-F0-9]{64}$ ]]
-          package="$RUNNER_TEMP/$name"
-          gh api "repos/$GITHUB_REPOSITORY/releases/assets/$id" -H 'Accept: application/octet-stream' > "$package"
-          [[ -s "$package" ]]
-          printf '%s  %s\n' "${digest#sha256:}" "$package" | sha256sum --check
-          echo "path=$package" >> "$GITHUB_OUTPUT"
-
-      - name: Sign existing bytes
-        id: signature
-        uses: publishpress/github-workflows/.github/actions/sign-package@v3
         with:
+          release-tag: ${{ inputs.release_tag }}
           private-key: ${{ secrets.PLUGIN_ZIP_ED25519_PRIVATE_KEY }}
-          package-path: ${{ steps.package.outputs.path }}
-
-      - name: Upload signature only
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ inputs.release_tag }}
-          SIGNATURE_PATH: ${{ steps.signature.outputs.path }}
-        run: gh release upload "$RELEASE_TAG" "$SIGNATURE_PATH" --repo "$GITHUB_REPOSITORY" --clobber

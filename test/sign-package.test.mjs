@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const script = readFileSync(new URL('../.github/actions/sign-package/sign.sh', import.meta.url), 'utf8');
-const bash = process.platform === 'win32' ? 'C:/laragon/bin/git/bin/bash.exe' : 'bash';
+const bash = 'bash';
 
 for (const owner of ['publishpress', 'MetaSlider']) {
   test(`signs exact bytes for ${owner} with a test-only key`, () => {

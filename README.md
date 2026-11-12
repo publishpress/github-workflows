@@ -17,7 +17,7 @@ Reusable GitHub Actions workflows for PublishPress plugin repositories.
 - `.github/workflows/build-prerelease.yml`: Builds and signs unpublished test ZIPs as Actions artifacts only.
 - `.github/workflows/sign-existing-release.yml`: Adds a signature to existing release ZIP bytes without rebuilding or replacing them.
 
-See [Signed Plugin Builds](docs-signing.md) for the signing secret, test-build inputs, and rollout requirements.
+See [Signed Plugin Builds](docs/dev/security/package-signing.md) for the signing secret, test-build inputs, and rollout requirements.
 
 ## Usage
 
@@ -383,7 +383,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing stable release tag, for example v1.2.0.
+        description: Existing stable release tag (v1.2.0), or all for unsigned stable releases.
         required: true
         type: string
 permissions:
@@ -396,4 +396,8 @@ jobs:
     secrets: inherit
 ```
 
-This uploads only the signature for the existing ZIP. It does not rebuild or replace the ZIP. Both workflows require `PLUGIN_ZIP_ED25519_PRIVATE_KEY`, passed through `secrets: inherit`.
+Enter an exact tag to sign one release, or `all` to sign every unsigned stable release in that repository. Existing callers already accept `all` through their `release_tag` text field; changing the caller is optional.
+
+This uploads only signatures for existing ZIPs. It does not rebuild or replace ZIPs, and it does not replace existing signatures. Drafts and pre-releases are skipped. The run summary lists signed, skipped, and failed releases with links to their release pages. Download the `.sig` from **Assets** on those pages, not from Actions artifacts. A failed release does not stop the remaining releases, but the overall run fails so failures are visible. Rerunning `all` skips completed releases.
+
+Both workflows require `PLUGIN_ZIP_ED25519_PRIVATE_KEY`, passed through `secrets: inherit`. Publish the new action and workflow together before moving `v3`. Signing historical assets does not enable Package Server or Hub enforcement.

@@ -1,0 +1,18 @@
+name: Sign existing release ZIPs
+description: Sign original ZIP assets for one stable release or all unsigned stable releases.
+inputs:
+  release-tag:
+    required: true
+    description: Exact stable release tag, or all for unsigned stable releases.
+  private-key:
+    required: true
+    description: Organization Ed25519 private key from Actions secrets.
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        RELEASE_TAG: ${{ inputs.release-tag }}
+        PRIVATE_KEY: ${{ inputs.private-key }}
+        SIGN_EXISTING_SCRIPT: ${{ github.action_path }}/sign-existing.mjs
+      run: node "$SIGN_EXISTING_SCRIPT"
