@@ -3,6 +3,11 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+
+- Added: Bulk signing of unsigned stable release ZIPs using `release_tag: all`, preserving original ZIPs and existing signatures, with per-release results and download links.
+- Fixed: Signing tests resolve Bash from PATH instead of a machine-specific installation path.
+
 [3.8.1] - 11 November, 2026
 
 - Security: Build and sign stable free and Pro ZIPs in CI using the organization Ed25519 key and the `v1 <key-id> <base64>` signature contract, #37, #88.
