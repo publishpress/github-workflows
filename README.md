@@ -17,7 +17,7 @@ Reusable GitHub Actions workflows for PublishPress plugin repositories.
 - `.github/workflows/build-prerelease.yml`: Builds and signs unpublished test ZIPs as Actions artifacts only.
 - `.github/workflows/sign-existing-release.yml`: Adds a signature to existing release ZIP bytes without rebuilding or replacing them.
 
-See [Signed Plugin Builds](docs-signing.md) for the signing secret, test-build inputs, and rollout requirements.
+See [Signed Plugin Builds](docs/dev/security/package-signing.md) for the signing secret, test-build inputs, and rollout requirements.
 
 ## Usage
 

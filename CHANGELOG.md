@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[3.8.2] - 12 November, 2026
 
 - Added: Bulk signing of unsigned stable release ZIPs using `release_tag: all`, preserving original ZIPs and existing signatures, with per-release results and download links.
 - Fixed: Signing tests resolve Bash from PATH instead of a machine-specific installation path.
