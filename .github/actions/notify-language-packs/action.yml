@@ -1,0 +1,26 @@
+name: Notify language pack publication
+description: Emit a release edit after committed catalogs have been attached
+inputs:
+  release-tag:
+    required: true
+    description: Published stable release tag
+  text-domain:
+    required: true
+    description: Catalog text domain
+  digest:
+    required: true
+    description: SHA-256 of the uploaded locales archive
+runs:
+  using: composite
+  steps:
+    - uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+      env:
+        NOTIFIER_PATH: ${{ github.action_path }}
+        RELEASE_TAG: ${{ inputs.release-tag }}
+        TEXT_DOMAIN: ${{ inputs.text-domain }}
+        CATALOG_DIGEST: ${{ inputs.digest }}
+      with:
+        script: |
+          const { pathToFileURL } = require('node:url');
+          const { notifyLanguagePacks } = await import(pathToFileURL(`${process.env.NOTIFIER_PATH}/notify.mjs`).href);
+          await notifyLanguagePacks(github, context, process.env);
