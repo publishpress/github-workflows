@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.8.3] - 16 November, 2026
+
+- Fixed: Notify the Package Server GitHub App after attaching language catalogs, preserve visible release notes, reject draft/pre-release publication, and allow repeated import attempts without storing admin tokens in Actions.
+
 [3.8.2] - 12 November, 2026
 
 - Added: Bulk signing of unsigned stable release ZIPs using `release_tag: all`, preserving original ZIPs and existing signatures, with per-release results and download links.
