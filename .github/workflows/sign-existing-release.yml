@@ -1,11 +1,11 @@
-name: Sign existing releases without rebuilding
+name: Sign existing releases (one tag or all) without rebuilding
 permissions:
   contents: write
 on:
   workflow_call:
     inputs:
       release_tag:
-        description: Exact stable release tag, or all to sign unsigned stable releases.
+        description: 'Exact stable release tag (e.g. v1.2.3), or "all" to sign every eligible unsigned stable release.'
         required: true
         type: string
     secrets:
@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Sign original release ZIPs and upload signatures
-        uses: publishpress/github-workflows/.github/actions/sign-existing-releases@v3
+        uses: publishpress/github-workflows/.github/actions/sign-existing-releases@aea1f2413c5222e35850482160b4b02829007b98 # legacy dot-separated ZIP support
         env:
           GH_TOKEN: ${{ github.token }}
         with:

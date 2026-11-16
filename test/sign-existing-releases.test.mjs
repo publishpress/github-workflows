@@ -19,6 +19,26 @@ test('skips drafts, pre-releases, and language-pack tags', () => {
   }
 });
 
+test('accepts legacy dot-separated ZIPs and preserves their exact signature filename', () => {
+  const legacy = { ...asset, name: 'ml-slider-lightbox.2.39.0.zip' };
+  const selected = planRelease({ ...release, tag_name: '2.39.0', assets: [legacy] });
+  assert.equal(selected.status, 'ready');
+  assert.equal(selected.asset, legacy);
+  assert.equal(planRelease({ ...release, tag_name: '2.39.0', assets: [legacy, { name: `${legacy.name}.sig` }] }).status, 'skipped');
+});
+
+test('rejects ambiguity across hyphen and dot separators', () => {
+  for (const assets of [[asset, { ...asset, name: 'plugin.1.2.3.zip' }], [{ ...asset, name: 'plugin.1.2.3.zip' }, asset]]) {
+    assert.equal(planRelease({ ...release, assets }).status, 'failed');
+  }
+});
+
+test('rejects empty or wrong-version legacy ZIPs', () => {
+  for (const change of [{ name: 'plugin.1.2.3.zip', size: 0 }, { name: 'plugin.1.2.30.zip' }, { name: 'plugin.11.2.3.zip' }, { name: 'plugin.1.2.4.zip' }]) {
+    assert.equal(planRelease({ ...release, assets: [{ ...asset, ...change }] }).status, 'failed');
+  }
+});
+
 test('skips existing signatures without replacing them', () => {
   assert.equal(planRelease({ ...release, assets: [asset, { name: `${asset.name}.sig` }] }).status, 'skipped');
 });
