@@ -28,6 +28,8 @@ The run uploads only the ZIP and `.sig` as Actions artifacts. Its summary links 
 
 Use the [existing-release signing caller example](../../../README.md#sign-an-existing-release-example) in the README.
 
+Versioned ZIP names may end in `-VERSION.zip` or the legacy `.VERSION.zip` form. There must be exactly one non-empty match across both forms. The original filename and ZIP bytes are preserved, and the signature uses that exact filename plus `.sig`.
+
 Open **Actions > Sign an existing release without rebuilding > Run workflow**, enter the exact tag or `all`, and confirm the matching `.sig` appears beside each unchanged ZIP on the release page. Existing plugin callers need no new inputs to use `all`.
 
 The run summary reports each release as signed, skipped, or failed and links to its release page. Signatures are under the release's **Assets**, not Actions artifacts. Drafts, pre-releases, non-stable tags, and releases with an existing signature are skipped. Missing or ambiguous versioned ZIPs and missing or invalid GitHub digests are failures. Processing continues after a failure, then the overall job fails. Rerun `all` to retry; completed releases are skipped. Each run is limited to 60 minutes; a later run can finish any remaining unsigned releases.

@@ -12,9 +12,10 @@ export function planRelease(release) {
     return { status: 'skipped', detail: 'Not a published stable release' };
   }
   const version = release.tag_name.replace(/^v?-?/, '');
-  const candidates = release.assets.filter(asset => asset.name.endsWith(`-${version}.zip`) && asset.size > 0);
+  const candidates = release.assets.filter(asset => asset.size > 0
+    && (asset.name.endsWith(`-${version}.zip`) || asset.name.endsWith(`.${version}.zip`)));
   if (candidates.length !== 1) {
-    return { status: 'failed', detail: 'Expected exactly one non-empty versioned ZIP' };
+    return { status: 'failed', detail: `Expected exactly one non-empty ZIP ending in -${version}.zip or .${version}.zip; found ${candidates.length}` };
   }
   const asset = candidates[0];
   if (!/^[A-Za-z0-9._-]+\.zip$/.test(asset.name)) {
