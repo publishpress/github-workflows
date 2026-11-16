@@ -97,7 +97,7 @@ jobs:
 
       - name: Notify the GitHub App after attaching catalogs
         if: ${{ !cancelled() && steps.publish.outputs.digest != '' }}
-        uses: publishpress/github-workflows/.github/actions/notify-language-packs@v3
+        uses: publishpress/github-workflows/.github/actions/notify-language-packs@7237c0f0abaebf44872caa633c15ffc3ff13e2b4 # v3
         with:
           digest: ${{ steps.publish.outputs.digest }}
           text-domain: ${{ inputs.text_domain }}

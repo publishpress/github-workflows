@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Sign original release ZIPs and upload signatures
-        uses: publishpress/github-workflows/.github/actions/sign-existing-releases@v3
+        uses: publishpress/github-workflows/.github/actions/sign-existing-releases@7237c0f0abaebf44872caa633c15ffc3ff13e2b4 # v3
         env:
           GH_TOKEN: ${{ github.token }}
         with:

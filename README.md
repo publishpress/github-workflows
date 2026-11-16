@@ -27,6 +27,8 @@ Create a workflow file in your repository under `.github/workflows/` and call on
 
 Security recommendation: always pin reusable workflows to a commit SHA, not a branch name such as `main`.
 
+The reusable workflows also pin their composite actions to full commit SHAs for repositories that enforce SHA-only actions. When publishing changes to a composite action, update its workflow callers to the reviewed commit containing those changes; moving `v3` alone does not update the pinned action code. Run `node --test test/*.test.mjs` to check the pins and signing tests.
+
 ### Unit tests example
 
 ```yaml
