@@ -3,7 +3,7 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[3.8.3] - 16 November, 2026
 
 - Fixed: Notify the Package Server GitHub App after attaching language catalogs, preserve visible release notes, reject draft/pre-release publication, and allow repeated import attempts without storing admin tokens in Actions.
 
