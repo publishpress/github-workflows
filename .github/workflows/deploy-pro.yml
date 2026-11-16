@@ -93,7 +93,7 @@ jobs:
 
       - name: Sign package
         id: signature
-        uses: publishpress/github-workflows/.github/actions/sign-package@v3
+        uses: publishpress/github-workflows/.github/actions/sign-package@7237c0f0abaebf44872caa633c15ffc3ff13e2b4 # v3
         with:
           private-key: ${{ secrets.PLUGIN_ZIP_ED25519_PRIVATE_KEY }}
           key-id: ${{ inputs.package_signing_key_id }}

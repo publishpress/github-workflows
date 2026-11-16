@@ -3,6 +3,13 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+[3.8.4] - 16 November, 2026
+
+- Fixed: Pin signing and language-pack composite actions to full commit SHAs for repositories that enforce SHA-only action policies.
+- Fixed: Accept legacy `.VERSION.zip` release assets alongside `-VERSION.zip` when backfilling signatures, while rejecting ambiguous matches and preserving original ZIPs and existing signatures.
+- Changed: Clarify that existing-release signing accepts an exact tag or `all`, and document the caller description needed to show this in the Run workflow form.
+- Added: CI regression coverage for action pinning and legacy versioned ZIP selection.
+
 [3.8.3] - 16 November, 2026
 
 - Fixed: Notify the Package Server GitHub App after attaching language catalogs, preserve visible release notes, reject draft/pre-release publication, and allow repeated import attempts without storing admin tokens in Actions.

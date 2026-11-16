@@ -27,6 +27,8 @@ Create a workflow file in your repository under `.github/workflows/` and call on
 
 Security recommendation: always pin reusable workflows to a commit SHA, not a branch name such as `main`.
 
+The reusable workflows also pin their composite actions to full commit SHAs for repositories that enforce SHA-only actions. When publishing changes to a composite action, update its workflow callers to the reviewed commit containing those changes; moving `v3` alone does not update the pinned action code. Run `node --test test/*.test.mjs` to check the pins and signing tests.
+
 ### Unit tests example
 
 ```yaml
@@ -385,7 +387,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing stable release tag (v1.2.0), or all for unsigned stable releases.
+        description: 'Exact stable release tag (e.g. v1.2.3), or "all" to sign every eligible unsigned stable release.'
         required: true
         type: string
 permissions:
@@ -398,7 +400,7 @@ jobs:
     secrets: inherit
 ```
 
-Enter an exact tag to sign one release, or `all` to sign every unsigned stable release in that repository. Existing callers already accept `all` through their `release_tag` text field; changing the caller is optional.
+Enter an exact tag to sign one release, or `all` to sign every unsigned stable release in that repository. Existing callers already accept `all` through their `release_tag` text field; changing the caller is optional for functionality. To advertise bulk mode in the **Run workflow** form, use the caller input description shown above: that form does not inherit the shared workflow's description.
 
 This uploads only signatures for existing ZIPs. It does not rebuild or replace ZIPs, and it does not replace existing signatures. Drafts and pre-releases are skipped. The run summary lists signed, skipped, and failed releases with links to their release pages. Download the `.sig` from **Assets** on those pages, not from Actions artifacts. A failed release does not stop the remaining releases, but the overall run fails so failures are visible. Rerunning `all` skips completed releases.
 
