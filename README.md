@@ -340,7 +340,6 @@ Optional `workflow_call` inputs:
 
 No secrets are needed. A free pull request from a fork cannot be bundled, because Composer only sees branches in the free plugin's repository.
 
-
 ### Signed pre-release build example
 
 Add this caller as `.github/workflows/build-prerelease.yml` in each plugin:
@@ -405,3 +404,9 @@ Enter an exact tag to sign one release, or `all` to sign every unsigned stable r
 This uploads only signatures for existing ZIPs. It does not rebuild or replace ZIPs, and it does not replace existing signatures. Drafts and pre-releases are skipped. The run summary lists signed, skipped, and failed releases with links to their release pages. Download the `.sig` from **Assets** on those pages, not from Actions artifacts. A failed release does not stop the remaining releases, but the overall run fails so failures are visible. Rerunning `all` skips completed releases.
 
 Both workflows require `PLUGIN_ZIP_ED25519_PRIVATE_KEY`, passed through `secrets: inherit`. Publish the new action and workflow together before moving `v3`. Signing historical assets does not enable Package Server or Hub enforcement.
+
+## Code quality
+
+`code-quality.yml` measures one ref and posts the result to the infra dashboard. It does not deploy the plugin. Call it after a successful release deploy, or from a manual run. A manual run chooses `release` or `development`. It does not accept an arbitrary branch.
+
+A repository may add paths in a root `code-quality.yml` file. The option name is `exclude`. Those paths are added to the default exclude list. They do not replace it.
