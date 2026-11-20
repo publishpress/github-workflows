@@ -5,7 +5,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-- Added: `code-quality.yml` measures a release or the default branch and posts the scores to the infra dashboard.
+- Added: `code-quality.yml` measures a release or the default branch and posts the scores to the infra dashboard. Codex scores security, architecture, maintainability, and documentation from the skills. The organization secret is `OPENAI_API_KEY`.
 
 [3.8.4] - 16 November, 2026
 

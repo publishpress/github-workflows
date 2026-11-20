@@ -25,12 +25,14 @@ on:
         required: true
       INFRA_READ_TOKEN:
         required: true
+      OPENAI_API_KEY:
+        required: true
 
 jobs:
   measure:
     name: Post code quality
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     steps:
       - name: Checkout the audited ref
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -70,6 +72,25 @@ jobs:
             echo "$RUNNER_TEMP/wpcs/vendor/bin" >> "$GITHUB_PATH"
           fi
 
+      - name: Measure PHPMetrics
+        env:
+          ENTITY_SLUG: ${{ inputs.entity_slug }}
+          AUDIT_SOURCE: ${{ inputs.source }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse HEAD)
+          GIT_SHA="$sha" bash .code-quality/.github/actions/code-quality/audit.sh measure
+
+      - name: Score with Codex
+        uses: openai/codex-action@4aac6da4b686168e147798ca841cf64ff0f027b8
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          permission-profile: ":read-only"
+          safety-strategy: drop-sudo
+          prompt-file: .code-quality/.github/actions/code-quality/prompt.md
+          output-schema-file: .code-quality/.github/actions/code-quality/scores.schema.json
+          output-file: ${{ runner.temp }}/code-quality-scores.json
+
       - name: Post code quality
         env:
           DASHBOARD_URL: ${{ secrets.INFRA_DASHBOARD_URL }}
@@ -77,7 +98,8 @@ jobs:
           USERNAME: ${{ secrets.INFRA_PLUGIN_USER }}
           APP_PASSWORD: ${{ secrets.INFRA_PLUGIN_PASSWORD }}
           AUDIT_SOURCE: ${{ inputs.source }}
+          SCORES_JSON: ${{ runner.temp }}/code-quality-scores.json
         run: |
           set -euo pipefail
           sha=$(git rev-parse HEAD)
-          GIT_SHA="$sha" bash .code-quality/.github/actions/code-quality/audit.sh
+          GIT_SHA="$sha" bash .code-quality/.github/actions/code-quality/audit.sh post
