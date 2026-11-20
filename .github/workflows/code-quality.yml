@@ -67,7 +67,6 @@ jobs:
             composer config --no-plugins --working-dir="$RUNNER_TEMP/wpcs" allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
             composer require --no-interaction --working-dir="$RUNNER_TEMP/wpcs" \
               squizlabs/php_codesniffer:^3 wp-coding-standards/wpcs:^3
-            "$RUNNER_TEMP/wpcs/vendor/bin/phpcs" --config-set installed_paths "$RUNNER_TEMP/wpcs/vendor/wp-coding-standards/wpcs"
             echo "$RUNNER_TEMP/wpcs/vendor/bin" >> "$GITHUB_PATH"
           fi
 
