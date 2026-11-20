@@ -1,0 +1,81 @@
+name: Measure code quality
+permissions:
+  contents: read
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit, tag, or branch to measure.
+        required: true
+        type: string
+      entity_slug:
+        description: Dashboard entity slug.
+        required: true
+        type: string
+      source:
+        description: release or development.
+        required: true
+        type: string
+    secrets:
+      INFRA_DASHBOARD_URL:
+        required: true
+      INFRA_PLUGIN_USER:
+        required: true
+      INFRA_PLUGIN_PASSWORD:
+        required: true
+      INFRA_READ_TOKEN:
+        required: true
+
+jobs:
+  measure:
+    name: Post code quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout the audited ref
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Checkout the code quality action
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          repository: publishpress/infra
+          ref: development
+          token: ${{ secrets.INFRA_READ_TOKEN }}
+          path: .code-quality
+          sparse-checkout: .github/actions/code-quality
+          persist-credentials: false
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, zip, tokenizer
+          tools: composer:v2, phpcs
+          coverage: none
+
+      - name: Install measurement tools
+        run: |
+          set -euo pipefail
+          composer require --no-interaction --working-dir="$RUNNER_TEMP/quality-tools" \
+            phpmetrics/phpmetrics:2.8.2 phpmd/phpmd:2.15.0
+          echo "$RUNNER_TEMP/quality-tools/vendor/bin" >> "$GITHUB_PATH"
+          if [[ "${{ inputs.entity_slug }}" == wp-plugin* ]]; then
+            composer require --no-interaction --working-dir="$RUNNER_TEMP/wpcs" \
+              squizlabs/php_codesniffer:^3 wp-coding-standards/wpcs:^3
+            "$RUNNER_TEMP/wpcs/vendor/bin/phpcs" --config-set installed_paths "$RUNNER_TEMP/wpcs/vendor/wp-coding-standards/wpcs"
+            echo "$RUNNER_TEMP/wpcs/vendor/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Post code quality
+        env:
+          DASHBOARD_URL: ${{ secrets.INFRA_DASHBOARD_URL }}
+          ENTITY_SLUG: ${{ inputs.entity_slug }}
+          USERNAME: ${{ secrets.INFRA_PLUGIN_USER }}
+          APP_PASSWORD: ${{ secrets.INFRA_PLUGIN_PASSWORD }}
+          AUDIT_SOURCE: ${{ inputs.source }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse HEAD)
+          GIT_SHA="$sha" bash .code-quality/.github/actions/code-quality/audit.sh

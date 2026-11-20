@@ -3,6 +3,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## Unreleased
+
+- Added: `code-quality.yml` measures a release or the default branch and posts the scores to the infra dashboard.
+
 [3.8.4] - 16 November, 2026
 
 - Fixed: Pin signing and language-pack composite actions to full commit SHAs for repositories that enforce SHA-only action policies.
