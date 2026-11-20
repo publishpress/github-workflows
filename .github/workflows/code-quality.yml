@@ -63,6 +63,8 @@ jobs:
             phpmetrics/phpmetrics:2.8.2 phpmd/phpmd:2.15.0
           echo "$RUNNER_TEMP/quality-tools/vendor/bin" >> "$GITHUB_PATH"
           if [[ "${{ inputs.entity_slug }}" == wp-plugin* ]]; then
+            composer init --no-interaction --name=publishpress/code-quality-wpcs --working-dir="$RUNNER_TEMP/wpcs"
+            composer config --no-plugins --working-dir="$RUNNER_TEMP/wpcs" allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
             composer require --no-interaction --working-dir="$RUNNER_TEMP/wpcs" \
               squizlabs/php_codesniffer:^3 wp-coding-standards/wpcs:^3
             "$RUNNER_TEMP/wpcs/vendor/bin/phpcs" --config-set installed_paths "$RUNNER_TEMP/wpcs/vendor/wp-coding-standards/wpcs"
