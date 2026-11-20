@@ -87,9 +87,16 @@ jobs:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           permission-profile: ":read-only"
           safety-strategy: drop-sudo
+          codex-home: ${{ runner.temp }}/codex-home
           prompt-file: .code-quality/.github/actions/code-quality/prompt.md
           output-schema-file: .code-quality/.github/actions/code-quality/scores.schema.json
           output-file: ${{ runner.temp }}/code-quality-scores.json
+
+      - name: Record the Codex cost
+        id: cost
+        env:
+          CODEX_HOME: ${{ runner.temp }}/codex-home
+        run: php .code-quality/.github/actions/code-quality/cost.php
 
       - name: Post code quality
         env:
@@ -99,6 +106,8 @@ jobs:
           APP_PASSWORD: ${{ secrets.INFRA_PLUGIN_PASSWORD }}
           AUDIT_SOURCE: ${{ inputs.source }}
           SCORES_JSON: ${{ runner.temp }}/code-quality-scores.json
+          MODEL_NAME: ${{ steps.cost.outputs.model }}
+          MODEL_COST: ${{ steps.cost.outputs.cost }}
         run: |
           set -euo pipefail
           sha=$(git rev-parse HEAD)
