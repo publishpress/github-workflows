@@ -52,12 +52,13 @@ jobs:
         with:
           php-version: '8.3'
           extensions: mbstring, xml, curl, zip, tokenizer
-          tools: composer:v2, phpcs
+          tools: composer:v2
           coverage: none
 
       - name: Install measurement tools
         run: |
           set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/quality-tools" "$RUNNER_TEMP/wpcs"
           composer require --no-interaction --working-dir="$RUNNER_TEMP/quality-tools" \
             phpmetrics/phpmetrics:2.8.2 phpmd/phpmd:2.15.0
           echo "$RUNNER_TEMP/quality-tools/vendor/bin" >> "$GITHUB_PATH"
