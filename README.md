@@ -407,6 +407,6 @@ Both workflows require `PLUGIN_ZIP_ED25519_PRIVATE_KEY`, passed through `secrets
 
 ## Code quality
 
-`code-quality.yml` measures one ref and posts the result to the infra dashboard. Codex reads the qa-audit and security-audit skills and returns the four scores. The organization secret is `OPENAI_API_KEY`. It does not deploy the plugin. Call it after a successful release deploy, or from a manual run. A manual run chooses `release` or `development`. It does not accept an arbitrary branch.
+`code-quality.yml` measures one ref and posts the result to the infra dashboard. Codex reads the qa-audit and security-audit skills and scores the four indexes from the measured packet. It does not search the repository. The organization secret is `OPENAI_API_KEY`. It does not deploy the plugin. Call it after a successful release deploy, or from a manual run. A manual run chooses `release` or `development`. It does not accept an arbitrary branch.
 
 A repository may add paths in a root `code-quality.yml` file. The option name is `exclude`. Those paths are added to the default exclude list. They do not replace it.
